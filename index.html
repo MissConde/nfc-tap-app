@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dance Tracker PWA</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        <div id="registration-view" class="card hidden">
+            <h2>Dancer Registration</h2>
+            <form id="regForm">
+                <input type="text" id="fullName" placeholder="Full Name" required>
+                <input type="text" id="alias" placeholder="Alias (Public)" required>
+                <input type="email" id="email" placeholder="Email" required>
+                <select id="role" required>
+                    <option value="" disabled selected>Role</option>
+                    <option value="Leader">Leader</option>
+                    <option value="Follower">Follower</option>
+                </select>
+                <input type="text" id="igUser" placeholder="Instagram @">
+                <label><input type="checkbox" id="consent" required> I agree to share data with the organizer</label>
+                <button type="submit">Link My Chip</button>
+            </form>
+        </div>
+        <div id="login-view" class="card">
+            <h2>Festival Login</h2>
+            <p>Enter your credentials to start tapping.</p>
+            <input type="text" id="userAlias" placeholder="Alias (e.g. BlueFire)">
+            <input type="text" id="userKey" placeholder="Private Key">
+            <button onclick="handleLogin()">Enter</button>
+        </div>
+
+        <div id="dancer-view" class="hidden">
+            <div class="card">
+                <h3>Hi, <span id="displayName"></span>!</h3>
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <small>Role</small><br>
+                        <strong id="displayRole">Dancer</strong>
+                    </div>
+                    <div class="stat-item">
+                        <small>Dances</small><br>
+                        <strong>12</strong>
+                    </div>
+                </div>
+            </div>
+
+            <button id="scanBtn" class="secondary-btn">TAP PARTNER'S CHIP</button>
+            <p id="scan-status">Ready to scan...</p>
+
+            <div class="card">
+                <h3>Live Rankings</h3>
+                <div id="leaderboard-list">Loading...</div>
+            </div>
+        </div>
+
+        <div id="organizer-view" class="hidden">
+            <div class="card" style="border-left: 4px solid var(--error);">
+                <h3>Organizer Dashboard</h3>
+                <p>Private Directory (Real Names)</p>
+                <div id="admin-stats">
+                    <button onclick="alert('Exporting PDF...')">Download Attendance</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Logic remains here for now to keep it simple, 
+        // but we can move it to app.js later.
+        function handleLogin() {
+            const alias = document.getElementById('userAlias').value;
+            const key = document.getElementById('userKey').value;
+
+            if(key.toLowerCase().includes("admin")) {
+                showView("organizer-view");
+            } else {
+                showView("dancer-view");
+            }
+            document.getElementById('displayName').innerText = alias;
+        }
+
+        function showView(viewId) {
+            document.getElementById('login-view').classList.add('hidden');
+            document.getElementById(viewId).classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>

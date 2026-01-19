@@ -1,0 +1,103 @@
+/* style.css */
+:root {
+    --primary: #6200ee;
+    --primary-variant: #3700b3;
+    --secondary: #03dac6;
+    --background: #f5f5f5;
+    --surface: #ffffff;
+    --error: #b00020;
+    --text-primary: #000000;
+    --text-secondary: #757575;
+}
+
+body {
+    font-family: 'Roboto', 'Segoe UI', sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: var(--background);
+    color: var(--text-primary);
+    display: flex;
+    justify-content: center;
+}
+
+.container {
+    width: 100%;
+    max-width: 500px; /* Limits width on tablets/PC */
+    padding: 20px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.card {
+    background: var(--surface);
+    padding: 24px;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    margin-bottom: 20px;
+}
+
+h2, h3 {
+    margin-top: 0;
+    color: var(--primary);
+}
+
+input {
+    width: 100%;
+    padding: 14px;
+    margin: 12px 0;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 16px;
+    box-sizing: border-box; /* Crucial for mobile padding */
+}
+
+button {
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: 8px;
+    background: var(--primary);
+    color: white;
+    font-weight: 600;
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+button:active {
+    background: var(--primary-variant);
+    transform: scale(0.98);
+}
+
+.secondary-btn {
+    background: var(--secondary);
+    color: #000;
+    margin-top: 10px;
+}
+
+.stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.stat-item {
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+#scan-status {
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-top: 10px;
+}
+
+select { border: 1px solid #e0e0e0; background: white; }
+input:invalid { border-color: var(--error); }

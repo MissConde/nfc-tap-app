@@ -15,14 +15,39 @@ window.onload = async () => {
     } else {
         document.getElementById('scan-status').innerText = "Please tap your NFC chip to begin.";
     }
+    // Initialize button state on load
+    validateFormState();
 };
 
+/**
+ * UI & VALIDATION LOGIC
+ */
+
+// Function to enable/disable the submit button visually and functionally
+function validateFormState() {
+    const form = document.getElementById('regForm');
+    const submitBtn = document.getElementById('submitBtn');
+    if (!form || !submitBtn) return;
+
+    const roleValue = document.getElementById('role').value;
+    const hasUniquenessErrors = form.querySelector('.is-invalid');
+    
+    // checkValidity() verifies all 'required', 'pattern', and 'type="email"' fields
+    const isFormValid = form.checkValidity();
+
+    if (isFormValid && roleValue && !hasUniquenessErrors) {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('btn-locked');
+    } else {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('btn-locked');
+    }
+}
+
 window.selectRole = function(roleValue) {
-    // 1. Update the hidden input value
     const roleInput = document.getElementById('role');
     if (roleInput) roleInput.value = roleValue;
 
-    // 2. Visual feedback
     const leaderBtn = document.getElementById('btn-leader');
     const followerBtn = document.getElementById('btn-follower');
 
@@ -35,14 +60,15 @@ window.selectRole = function(roleValue) {
         followerBtn.classList.add('active');
     }
 
-    // Hide error message if it was showing
     const roleError = document.getElementById('role-error');
     if (roleError) roleError.style.display = 'none';
 
-    console.log("Role selected and locked:", roleValue);
+    // Re-check form whenever role changes
+    validateFormState();
 };
 
-// Function to check uniqueness
+// --- UNIQUENESS LOGIC ---
+
 async function checkUniqueness(field, value) {
     if (!value) return false; 
     try {
@@ -61,7 +87,7 @@ document.getElementById('alias').addEventListener('blur', async (e) => {
     if (input.value.trim() === "") return;
 
     const isTaken = await checkUniqueness('alias', input.value.trim());
-    const errorSpan = input.nextElementSibling; // Targets the <span class="error-msg"> right after the input
+    const errorSpan = input.nextElementSibling;
 
     if (isTaken) {
         input.classList.add('is-invalid');
@@ -70,6 +96,7 @@ document.getElementById('alias').addEventListener('blur', async (e) => {
         input.classList.remove('is-invalid');
         if (errorSpan) errorSpan.innerText = "Alias cannot contain spaces";
     }
+    validateFormState();
 });
 
 // Logic for Email validation
@@ -87,24 +114,26 @@ document.getElementById('email').addEventListener('blur', async (e) => {
         input.classList.remove('is-invalid');
         if (errorSpan) errorSpan.innerText = "Please enter a valid email address";
     }
+    validateFormState();
 });
 
-// Clear the error status when they start typing
+// Listen to all inputs to clear errors and update button state
 document.querySelectorAll('input').forEach(input => {
     input.addEventListener('input', () => {
         input.classList.remove('is-invalid');
+        validateFormState();
     });
 });
 
-// --- REGISTRATION PROCESS ---
+/**
+ * DATA SUBMISSION & SYSTEM CHECKS
+ */
 
 async function checkUserInSystem(id) {
     const resp = await fetch(`${WEB_APP_URL}?action=check&id=${id}`);
     const result = await resp.json();
 
     if (result.registered) {
-        // Recovery Logic: For this MVP, we auto-restore. 
-        // In the future, add an email check here.
         const userData = { chipID: id, alias: result.alias, userKey: result.storedKey };
         localStorage.setItem('danceAppUser', JSON.stringify(userData));
         showView('dancer-view');
@@ -117,25 +146,16 @@ document.getElementById('regForm').onsubmit = async (e) => {
     e.preventDefault();
 
     const form = e.target;
-    const hasExistingErrors = form.querySelector('.is-invalid');
     const roleValue = document.getElementById('role').value;
-    const roleError = document.getElementById('role-error');
 
-    // 1. FINAL VALIDATION GUARD
-    // checkValidity() checks all the 'pattern' and 'required' rules in your HTML
-    if (!form.checkValidity() || !roleValue || hasExistingErrors) {
-        if (!roleValue) roleError.style.display = 'block';
-        form.classList.add('was-validated'); // Optional: helps style error colors
+    // Safety check (though button should be disabled anyway)
+    if (!form.checkValidity() || !roleValue || form.querySelector('.is-invalid')) {
+        form.classList.add('was-validated'); 
         return; 
     }
 
-    roleError.style.display = 'none';
-
-    // 2. DATA PREPARATION
     const userKey = Math.random().toString(36).substring(2, 8).toUpperCase();
     let igHandle = document.getElementById('igUser').value.trim();
-
-    // Auto-remove '@' if user typed it (keeps your Google Sheet clean)
     if (igHandle.startsWith('@')) igHandle = igHandle.substring(1);
 
     const payload = {
@@ -150,37 +170,29 @@ document.getElementById('regForm').onsubmit = async (e) => {
         consent: true
     };
 
-    // 3. UI FEEDBACK (Disable button during network request)
     const submitBtn = document.getElementById('submitBtn');
     submitBtn.innerText = "Linking Chip...";
     submitBtn.disabled = true;
 
     try {
-        // 4. SEND TO GOOGLE
-        // We use 'no-cors' to ensure the request actually fires without being blocked
         await fetch(WEB_APP_URL, { 
             method: 'POST', 
-            mode: 'no-cors', // Added to prevent CORS errors with Google Script
-            headers: { 'Content-Type': 'text/plain' }, // Use text/plain to avoid preflight
+            mode: 'no-cors', 
+            headers: { 'Content-Type': 'text/plain' }, 
             body: JSON.stringify(payload) 
         });
 
-        // 5. SAVE SESSION & REDIRECT
-        // Since we can't read the response, we wait 1 second to ensure 
-        // the browser finished the send-off before moving the UI.
         setTimeout(() => {
             localStorage.setItem('danceAppUser', JSON.stringify({ 
                 chipID: chipIDFromURL, 
                 alias: payload.alias, 
                 userKey: userKey,
-                role: payload.role // Store role for the Profile view later
+                role: payload.role
             }));
 
-            // Success feedback
             alert("Registration Successful! Your chip is now linked.");
             showView('dancer-view');
 
-            // Update the UI with the new data
             document.getElementById('displayName').innerText = payload.alias;
             document.getElementById('displayRole').innerText = payload.role;
          }, 1200);
@@ -190,6 +202,7 @@ document.getElementById('regForm').onsubmit = async (e) => {
         alert("Check your internet connection and try again.");
         submitBtn.innerText = "Try Again";
         submitBtn.disabled = false;
+        validateFormState();
     }
 };
 

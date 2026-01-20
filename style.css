@@ -73,6 +73,16 @@ button:active {
     transform: scale(0.98);
 }
 
+button:disabled, 
+button.btn-locked {
+    background-color: #ccc !important;
+    color: #666 !important;
+    cursor: not-allowed;
+    transform: none !important; /* Removes the "click" movement */
+    box-shadow: none !important;
+    letter-spacing: 1px;
+}
+
 .secondary-btn {
     background: var(--secondary);
     color: #000;

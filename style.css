@@ -73,6 +73,16 @@ button:active {
     transform: scale(0.98);
 }
 
+button:disabled, 
+button.btn-locked {
+    background-color: #ccc !important;
+    color: #666 !important;
+    cursor: not-allowed;
+    transform: none !important; /* Removes the "click" movement */
+    box-shadow: none !important;
+    letter-spacing: 1px;
+}
+
 .secondary-btn {
     background: var(--secondary);
     color: #000;
@@ -100,7 +110,19 @@ button:active {
 }
 
 select { border: 1px solid #e0e0e0; background: white; }
-input:invalid { border-color: var(--error); }
+
+/* Group built-in invalid and our custom "taken" error together */
+input:invalid:not(:placeholder-shown),
+input.is-invalid {
+    border-color: var(--error) !important;
+    background-color: #fff8f8;
+}
+
+/* Ensure error messages show for both cases */
+input:invalid:not(:placeholder-shown) + .error-msg,
+input.is-invalid + .error-msg {
+    display: block !important;
+}
 
 /* Role Buttons Layout */
 .role-container {

@@ -21,12 +21,12 @@
                 <div class="input-group">
                     <input type="text" id="alias" placeholder="Public Alias (Salsera10)" required 
                            pattern="^\S+$" title="No spaces allowed">
-                    <span class="error-msg">Alias cannot contain spaces</span>
+                    <span class="error-msg" id="alias-error">Alias cannot contain spaces or is already taken</span>
                 </div>
         
                 <div class="input-group">
                     <input type="email" id="email" placeholder="Email Address" required>
-                    <span class="error-msg">Please enter a valid email address</span>
+                    <span class="error-msg" id="email-error">Please enter a valid email address or email is already registered</span>
                 </div>
         
                 <div class="input-group">
@@ -43,7 +43,7 @@
         
                 <p class="legal-text">By continuing, you agree to share your data with organizers.</p>
                 
-                <button type="submit" id="submitBtn">Link My Chip</button>
+                <button type="submit" id="submitBtn" class="btn-locked" disabled>Link My Chip</button>
             </form>
         </div>
         <div id="login-view" class="card hidden">

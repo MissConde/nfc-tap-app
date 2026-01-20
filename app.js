@@ -116,33 +116,43 @@ document.getElementById('regForm').onsubmit = async (e) => {
 
     // 3. UI FEEDBACK (Disable button during network request)
     const submitBtn = document.getElementById('submitBtn');
-    const originalText = submitBtn.innerText;
-    submitBtn.innerText = "Registering...";
+    submitBtn.innerText = "Linking Chip...";
     submitBtn.disabled = true;
 
     try {
         // 4. SEND TO GOOGLE
+        // We use 'no-cors' to ensure the request actually fires without being blocked
         await fetch(WEB_APP_URL, { 
             method: 'POST', 
             mode: 'no-cors', // Added to prevent CORS errors with Google Script
+            headers: { 'Content-Type': 'text/plain' }, // Use text/plain to avoid preflight
             body: JSON.stringify(payload) 
         });
 
         // 5. SAVE SESSION & REDIRECT
-        localStorage.setItem('danceAppUser', JSON.stringify({ 
-            chipID: chipIDFromURL, 
-            alias: payload.alias, 
-            userKey: userKey,
-            role: payload.role // Store role for the Profile view later
-        }));
+        // Since we can't read the response, we wait 1 second to ensure 
+        // the browser finished the send-off before moving the UI.
+        setTimeout(() => {
+            localStorage.setItem('danceAppUser', JSON.stringify({ 
+                chipID: chipIDFromURL, 
+                alias: payload.alias, 
+                userKey: userKey,
+                role: payload.role // Store role for the Profile view later
+            }));
 
-        showView('dancer-view');
-        if (typeof loadLeaderboard === "function") loadLeaderboard();
+            // Success feedback
+            alert("Registration Successful! Your chip is now linked.");
+            showView('dancer-view');
+
+            // Update the UI with the new data
+            document.getElementById('displayName').innerText = payload.alias;
+            document.getElementById('displayRole').innerText = payload.role;
+         }, 1200);
         
     } catch (error) {
-        console.error("Upload error:", error);
-        alert("Connection error. Please check your internet and try again.");
-        submitBtn.innerText = originalText;
+        console.error("Network error:", error);
+        alert("Check your internet connection and try again.");
+        submitBtn.innerText = "Try Again";
         submitBtn.disabled = false;
     }
 };

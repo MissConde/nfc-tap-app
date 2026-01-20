@@ -1,6 +1,6 @@
 // app.js
 
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxDdmdM11N8B05RHbDhNLuFiBJvcnQTBAxRhZKmKNo3kpyOw5fJsoHxHwd7JBkbh7I/exec"
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwblf_uDWQ8bPh58KW09GD9ksZqeMrjtLBAb7a8sU7ArX_6v1SUMnF4MCz7z1-r4IU2/exec"
 const urlParams = new URLSearchParams(window.location.search);
 const chipIDFromURL = urlParams.get('id');
 
@@ -16,6 +16,52 @@ window.onload = async () => {
         document.getElementById('scan-status').innerText = "Please tap your NFC chip to begin.";
     }
 };
+
+function selectRole(roleValue) {
+    // 1. Update the hidden input value
+    document.getElementById('role').value = roleValue;
+
+    // 2. Clear 'active' class from all role buttons
+    document.querySelectorAll('.role-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    // 3. Add 'active' class to the clicked button
+    // We find the button based on its text or a specific ID
+    const selectedBtn = roleValue === 'Leader' ? document.getElementById('btn-leader') : document.getElementById('btn-follower');
+    if (selectedBtn) {
+        selectedBtn.classList.add('active');
+    }
+}
+
+// Function to check uniqueness
+async function checkUniqueness(field, value) {
+    try {
+        const resp = await fetch(`${WEB_APP_URL}?action=checkUnique&field=${field}&value=${encodeURIComponent(value)}`);
+        const result = await resp.json();
+        return result.exists;
+    } catch (e) {
+        console.error("Check failed", e);
+        return false; 
+    }
+}
+
+// Attach listeners to input fields
+document.getElementById('alias').addEventListener('blur', async (e) => {
+    const isTaken = await checkUniqueness('alias', e.target.value);
+    if (isTaken) {
+        alert("This Alias is already taken! Please choose another.");
+        e.target.value = ""; // Clear it
+    }
+});
+
+document.getElementById('email').addEventListener('blur', async (e) => {
+    const isTaken = await checkUniqueness('email', e.target.value);
+    if (isTaken) {
+        alert("This email is already registered.");
+        e.target.value = "";
+    }
+});
 
 async function checkUserInSystem(id) {
     const resp = await fetch(`${WEB_APP_URL}?action=check&id=${id}`);
@@ -34,23 +80,81 @@ async function checkUserInSystem(id) {
 
 document.getElementById('regForm').onsubmit = async (e) => {
     e.preventDefault();
+
+    const form = e.target;
+    const roleValue = document.getElementById('role').value;
+    const roleError = document.getElementById('role-error');
+
+    // 1. FINAL VALIDATION GUARD
+    // checkValidity() checks all the 'pattern' and 'required' rules in your HTML
+    if (!form.checkValidity() || !roleValue) {
+        if (!roleValue) roleError.style.display = 'block';
+        form.classList.add('was-validated'); // Optional: helps style error colors
+        return; 
+    }
+
+    roleError.style.display = 'none';
+
+    // 2. DATA PREPARATION
     const userKey = Math.random().toString(36).substring(2, 8).toUpperCase();
-    
+    let igHandle = document.getElementById('igUser').value.trim();
+
+    // Auto-remove '@' if user typed it (keeps your Google Sheet clean)
+    if (igHandle.startsWith('@')) igHandle = igHandle.substring(1);
+
     const payload = {
         action: "register",
         chipID: chipIDFromURL,
         userKey: userKey,
-        alias: document.getElementById('alias').value,
-        fullName: document.getElementById('fullName').value,
-        email: document.getElementById('email').value,
-        role: document.getElementById('role').value,
-        igUser: document.getElementById('igUser').value,
-        consent: document.getElementById('consent').checked
+        alias: document.getElementById('alias').value.trim(),
+        fullName: document.getElementById('fullName').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        role: roleValue,
+        igUser: igHandle,
+        consent: true
     };
 
-    await fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify(payload) });
-    localStorage.setItem('danceAppUser', JSON.stringify({ chipID: chipIDFromURL, alias: payload.alias, userKey: userKey }));
-    showView('dancer-view');
+    // 3. UI FEEDBACK (Disable button during network request)
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.innerText = "Linking Chip...";
+    submitBtn.disabled = true;
+
+    try {
+        // 4. SEND TO GOOGLE
+        // We use 'no-cors' to ensure the request actually fires without being blocked
+        await fetch(WEB_APP_URL, { 
+            method: 'POST', 
+            mode: 'no-cors', // Added to prevent CORS errors with Google Script
+            headers: { 'Content-Type': 'text/plain' }, // Use text/plain to avoid preflight
+            body: JSON.stringify(payload) 
+        });
+
+        // 5. SAVE SESSION & REDIRECT
+        // Since we can't read the response, we wait 1 second to ensure 
+        // the browser finished the send-off before moving the UI.
+        setTimeout(() => {
+            localStorage.setItem('danceAppUser', JSON.stringify({ 
+                chipID: chipIDFromURL, 
+                alias: payload.alias, 
+                userKey: userKey,
+                role: payload.role // Store role for the Profile view later
+            }));
+
+            // Success feedback
+            alert("Registration Successful! Your chip is now linked.");
+            showView('dancer-view');
+
+            // Update the UI with the new data
+            document.getElementById('displayName').innerText = payload.alias;
+            document.getElementById('displayRole').innerText = payload.role;
+         }, 1200);
+        
+    } catch (error) {
+        console.error("Network error:", error);
+        alert("Check your internet connection and try again.");
+        submitBtn.innerText = "Try Again";
+        submitBtn.disabled = false;
+    }
 };
 
 function showView(viewId) {

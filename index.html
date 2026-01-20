@@ -9,23 +9,43 @@
 <body>
 
     <div class="container">
-        <div id="registration-view" class="card hidden">
-            <h2>Dancer Registration</h2>
-            <form id="regForm">
-                <input type="text" id="fullName" placeholder="Full Name" required>
-                <input type="text" id="alias" placeholder="Alias (Public)" required>
-                <input type="email" id="email" placeholder="Email" required>
-                <select id="role" required>
-                    <option value="" disabled selected>Role</option>
-                    <option value="Leader">Leader</option>
-                    <option value="Follower">Follower</option>
-                </select>
-                <input type="text" id="igUser" placeholder="Instagram @">
-                <label><input type="checkbox" id="consent" required> I agree to share data with the organizer</label>
-                <button type="submit">Link My Chip</button>
+        <div id="registration-view" class="card">
+            <h2>Dancer Profile</h2>
+            <form id="regForm" novalidate> <div class="input-group">
+                    <input type="text" id="fullName" placeholder="Full Name" required 
+                           pattern=".*\s.*" title="Please enter first and last name">
+                    <span class="error-msg">Please enter at least two names (First Last)</span>
+                </div>
+        
+                <div class="input-group">
+                    <input type="text" id="alias" placeholder="Public Alias (Salsera10)" required 
+                           pattern="^\S+$" title="No spaces allowed">
+                    <span class="error-msg">Alias cannot contain spaces</span>
+                </div>
+        
+                <div class="input-group">
+                    <input type="email" id="email" placeholder="Email Address" required>
+                    <span class="error-msg">Please enter a valid email address</span>
+                </div>
+        
+                <div class="input-group">
+                    <input type="text" id="igUser" placeholder="Instagram User (Optional)">
+                </div>
+        
+                <p style="margin-bottom: 8px; font-weight: bold; color: var(--text-secondary);">Your Role:</p>
+                <div class="role-container">
+                    <button type="button" class="role-btn" id="btn-leader" onclick="selectRole('Leader')">Leader</button>
+                    <button type="button" class="role-btn" id="btn-follower" onclick="selectRole('Follower')">Follower</button>
+                </div>
+                <input type="hidden" id="role" required>
+                <span id="role-error" class="error-msg">Please select a role</span>
+        
+                <p class="legal-text">By continuing, you agree to share your data with organizers.</p>
+                
+                <button type="submit" id="submitBtn">Link My Chip</button>
             </form>
         </div>
-        <div id="login-view" class="card">
+        <div id="login-view" class="card hidden">
             <h2>Festival Login</h2>
             <p>Enter your credentials to start tapping.</p>
             <input type="text" id="userAlias" placeholder="Alias (e.g. BlueFire)">

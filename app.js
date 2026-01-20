@@ -182,6 +182,10 @@ document.getElementById('regForm').onsubmit = async (e) => {
             body: JSON.stringify(payload) 
         });
 
+        // Show the mobile success overlay
+        const overlay = document.getElementById('success-overlay');
+        overlay.classList.remove('hidden');
+
         setTimeout(() => {
             localStorage.setItem('danceAppUser', JSON.stringify({ 
                 chipID: chipIDFromURL, 
@@ -190,7 +194,8 @@ document.getElementById('regForm').onsubmit = async (e) => {
                 role: payload.role
             }));
 
-            alert("Registration Successful! Your chip is now linked.");
+            // Hide overlay and switch view
+            overlay.classList.add('hidden');
             showView('dancer-view');
 
             document.getElementById('displayName').innerText = payload.alias;
@@ -199,8 +204,16 @@ document.getElementById('regForm').onsubmit = async (e) => {
         
     } catch (error) {
         console.error("Network error:", error);
-        alert("Check your internet connection and try again.");
-        submitBtn.innerText = "Try Again";
+        
+        // UI FEEDBACK: Show the mobile-friendly error overlay
+        const errorOverlay = document.getElementById('error-overlay');
+        const errorMsgText = document.getElementById('error-message');
+        
+        if (errorMsgText) errorMsgText.innerText = "We couldn't link your chip. Please check your internet connection.";
+        errorOverlay.classList.remove('hidden');
+    
+        // Reset the button so they can try again after closing the overlay
+        submitBtn.innerText = "Link My Chip";
         submitBtn.disabled = false;
         validateFormState();
     }
@@ -210,3 +223,7 @@ function showView(viewId) {
     document.querySelectorAll('.card, #registration-view, #dancer-view').forEach(v => v.classList.add('hidden'));
     document.getElementById(viewId).classList.remove('hidden');
 }
+
+window.hideErrorOverlay = function() {
+    document.getElementById('error-overlay').classList.add('hidden');
+};

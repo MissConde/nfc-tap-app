@@ -44,6 +44,7 @@ window.selectRole = function(roleValue) {
 
 // Function to check uniqueness
 async function checkUniqueness(field, value) {
+    if (!value) return false; 
     try {
         const resp = await fetch(`${WEB_APP_URL}?action=checkUnique&field=${field}&value=${encodeURIComponent(value)}`);
         const result = await resp.json();
@@ -54,22 +55,48 @@ async function checkUniqueness(field, value) {
     }
 }
 
-// Attach listeners to input fields
+// Logic for Alias validation
 document.getElementById('alias').addEventListener('blur', async (e) => {
-    const isTaken = await checkUniqueness('alias', e.target.value);
+    const input = e.target;
+    if (input.value.trim() === "") return;
+
+    const isTaken = await checkUniqueness('alias', input.value.trim());
+    const errorSpan = input.nextElementSibling; // Targets the <span class="error-msg"> right after the input
+
     if (isTaken) {
-        alert("This Alias is already taken! Please choose another.");
-        e.target.value = ""; // Clear it
+        input.classList.add('is-invalid');
+        if (errorSpan) errorSpan.innerText = "This Alias is already taken.";
+    } else {
+        input.classList.remove('is-invalid');
+        if (errorSpan) errorSpan.innerText = "Alias cannot contain spaces";
     }
 });
 
+// Logic for Email validation
 document.getElementById('email').addEventListener('blur', async (e) => {
-    const isTaken = await checkUniqueness('email', e.target.value);
+    const input = e.target;
+    if (input.value.trim() === "") return;
+
+    const isTaken = await checkUniqueness('email', input.value.trim());
+    const errorSpan = input.nextElementSibling;
+
     if (isTaken) {
-        alert("This email is already registered.");
-        e.target.value = "";
+        input.classList.add('is-invalid');
+        if (errorSpan) errorSpan.innerText = "This email is already registered.";
+    } else {
+        input.classList.remove('is-invalid');
+        if (errorSpan) errorSpan.innerText = "Please enter a valid email address";
     }
 });
+
+// Clear the error status when they start typing
+document.querySelectorAll('input').forEach(input => {
+    input.addEventListener('input', () => {
+        input.classList.remove('is-invalid');
+    });
+});
+
+// --- REGISTRATION PROCESS ---
 
 async function checkUserInSystem(id) {
     const resp = await fetch(`${WEB_APP_URL}?action=check&id=${id}`);
@@ -90,12 +117,13 @@ document.getElementById('regForm').onsubmit = async (e) => {
     e.preventDefault();
 
     const form = e.target;
+    const hasExistingErrors = form.querySelector('.is-invalid');
     const roleValue = document.getElementById('role').value;
     const roleError = document.getElementById('role-error');
 
     // 1. FINAL VALIDATION GUARD
     // checkValidity() checks all the 'pattern' and 'required' rules in your HTML
-    if (!form.checkValidity() || !roleValue) {
+    if (!form.checkValidity() || !roleValue || hasExistingErrors) {
         if (!roleValue) roleError.style.display = 'block';
         form.classList.add('was-validated'); // Optional: helps style error colors
         return; 

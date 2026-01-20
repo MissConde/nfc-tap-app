@@ -100,7 +100,19 @@ button:active {
 }
 
 select { border: 1px solid #e0e0e0; background: white; }
-input:invalid { border-color: var(--error); }
+
+/* Group built-in invalid and our custom "taken" error together */
+input:invalid:not(:placeholder-shown),
+input.is-invalid {
+    border-color: var(--error) !important;
+    background-color: #fff8f8;
+}
+
+/* Ensure error messages show for both cases */
+input:invalid:not(:placeholder-shown) + .error-msg,
+input.is-invalid + .error-msg {
+    display: block !important;
+}
 
 /* Role Buttons Layout */
 .role-container {

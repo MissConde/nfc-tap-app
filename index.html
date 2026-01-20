@@ -87,6 +87,23 @@
                 </div>
             </div>
         </div>
+        <div id="success-overlay" class="success-overlay hidden">
+            <div class="success-content">
+                <div class="checkmark-circle">
+                    <div class="checkmark draw"></div>
+                </div>
+                <h3>Chip Linked!</h3>
+                <p>Welcome to the floor.</p>
+            </div>
+        </div>
+        <div id="error-overlay" class="error-overlay hidden">
+            <div class="error-content">
+                <div class="error-icon">!</div>
+                <h3>Something went wrong</h3>
+                <p id="error-message">Check your connection and try again.</p>
+                <button type="button" class="secondary-btn" onclick="hideErrorOverlay()">Try Again</button>
+            </div>
+        </div>
     </div>
 
     <script>

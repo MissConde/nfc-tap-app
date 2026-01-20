@@ -17,22 +17,30 @@ window.onload = async () => {
     }
 };
 
-function selectRole(roleValue) {
+window.selectRole = function(roleValue) {
     // 1. Update the hidden input value
-    document.getElementById('role').value = roleValue;
+    const roleInput = document.getElementById('role');
+    if (roleInput) roleInput.value = roleValue;
 
-    // 2. Clear 'active' class from all role buttons
-    document.querySelectorAll('.role-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
+    // 2. Visual feedback
+    const leaderBtn = document.getElementById('btn-leader');
+    const followerBtn = document.getElementById('btn-follower');
 
-    // 3. Add 'active' class to the clicked button
-    // We find the button based on its text or a specific ID
-    const selectedBtn = roleValue === 'Leader' ? document.getElementById('btn-leader') : document.getElementById('btn-follower');
-    if (selectedBtn) {
-        selectedBtn.classList.add('active');
+    if (leaderBtn) leaderBtn.classList.remove('active');
+    if (followerBtn) followerBtn.classList.remove('active');
+
+    if (roleValue === 'Leader' && leaderBtn) {
+        leaderBtn.classList.add('active');
+    } else if (roleValue === 'Follower' && followerBtn) {
+        followerBtn.classList.add('active');
     }
-}
+
+    // Hide error message if it was showing
+    const roleError = document.getElementById('role-error');
+    if (roleError) roleError.style.display = 'none';
+
+    console.log("Role selected and locked:", roleValue);
+};
 
 // Function to check uniqueness
 async function checkUniqueness(field, value) {

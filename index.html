@@ -10,12 +10,16 @@
 <body>
 
     <div class="container">
+        <div id="scan-view" class="card hidden">
+            <h2>Welcome</h2>
+            <p id="scan-status">Please tap your NFC chip to begin.</p>
+        </div>
         <div id="registration-view" class="card">
             <h2>Dancer Profile</h2>
             <form id="regForm" novalidate> <div class="input-group">
                     <input type="text" id="fullName" placeholder="Full Name" required 
                            pattern=".*\s.*" title="Please enter first and last name">
-                    <span class="error-msg">Please enter at least two names (First Last)</span>
+                    <span class="error-msg">Please enter First and Last name</span>
                 </div>
         
                 <div class="input-group">
@@ -46,35 +50,77 @@
                 <button type="submit" id="submitBtn" class="btn-locked" disabled>Link My Chip</button>
             </form>
         </div>
-        <div id="login-view" class="card hidden">
-            <h2>Festival Login</h2>
-            <p>Enter your credentials to start tapping.</p>
-            <input type="text" id="userAlias" placeholder="Alias (e.g. BlueFire)">
-            <input type="text" id="userKey" placeholder="Private Key">
-            <button onclick="handleLogin()">Enter</button>
-        </div>
 
-        <div id="dancer-view" class="hidden">
+        <div id="dancer-view">
+            <div class="card header-card">
+                <h2 id="displayName">Loading...</h2>
+                <button class="secondary-btn btn-sm" onclick="unlinkChip()">Unlink Chip</button>
+            </div>
+        
             <div class="card">
-                <h3>Hi, <span id="displayName"></span>!</h3>
-                <div class="stat-grid">
-                    <div class="stat-item">
-                        <small>Role</small><br>
-                        <strong id="displayRole">Dancer</strong>
-                    </div>
-                    <div class="stat-item">
-                        <small>Dances</small><br>
-                        <strong>12</strong>
-                    </div>
+                <h3>My Dance History</h3>
+                <div class="filter-bar">
+                    <button class="filter-btn active" id="filter-all" onclick="filterHistory('all')">All</button>
+                    <button class="filter-btn" id="filter-pending" onclick="filterHistory('Pending')">Pending</button>
+                </div>
+                <div class="table-container">
+                    <table id="historyTable">
+                        <thead>
+                            <tr>
+                                <th>Partner</th>
+                                <th>Time</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyBody"></tbody>
+                    </table>
                 </div>
             </div>
-
-            <button id="scanBtn" class="secondary-btn">TAP PARTNER'S CHIP</button>
-            <p id="scan-status">Ready to scan...</p>
-
-            <div class="card">
-                <h3>Live Rankings</h3>
-                <div id="leaderboard-list">Loading...</div>
+        
+            <div id="stats-section" class="card stats-locked">
+                <div id="stats-placeholder">
+                    <h3>🔒 Festival Insights</h3>
+                    <p>Unlock your stats by giving feedback!</p>
+                    <button class="primary-btn" onclick="showFeedbackForm()">Give Feedback & Unlock</button>
+                </div>
+                
+                <div id="stats-content" class="hidden">
+                    <h3>Your Festival Wrap-up</h3>
+                    <div class="stat-grid">
+                        <div class="stat-item">
+                            <small>Total Confirmed</small>
+                            <div id="totalDances">0</div>
+                        </div>
+                        <div class="stat-item">
+                            <small>Peak Time</small>
+                            <div id="peakTime">--:--</div>
+                        </div>
+                    </div>
+                    </div>
+            </div>
+        </div>
+        
+        <div id="feedback-overlay" class="error-overlay hidden">
+            <div class="card feedback-card">
+                <h3>Festival Feedback</h3>
+                <form id="feedbackForm">
+                    <label>How was the music?</label>
+                    <select id="musicRating" required>
+                        <option value="5">Excellent</option>
+                        <option value="4">Good</option>
+                        <option value="3">Average</option>
+                        <option value="2">Poor</option>
+                    </select>
+                    
+                    <label>Favorite Partner (Alias)?</label>
+                    <input type="text" id="favPartner" placeholder="Who did you enjoy dancing with?">
+        
+                    <label>Anything else?</label>
+                    <textarea id="comments" rows="3"></textarea>
+                    
+                    <button type="submit" class="primary-btn">Submit & Unlock Stats</button>
+                    <button type="button" class="secondary-btn" onclick="hideFeedback()">Not yet</button>
+                </form>
             </div>
         </div>
 
@@ -105,26 +151,5 @@
             </div>
         </div>
     </div>
-
-    <script>
-        // Logic remains here for now to keep it simple, 
-        // but we can move it to app.js later.
-        function handleLogin() {
-            const alias = document.getElementById('userAlias').value;
-            const key = document.getElementById('userKey').value;
-
-            if(key.toLowerCase().includes("admin")) {
-                showView("organizer-view");
-            } else {
-                showView("dancer-view");
-            }
-            document.getElementById('displayName').innerText = alias;
-        }
-
-        function showView(viewId) {
-            document.getElementById('login-view').classList.add('hidden');
-            document.getElementById(viewId).classList.remove('hidden');
-        }
-    </script>
 </body>
 </html>

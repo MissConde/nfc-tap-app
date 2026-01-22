@@ -119,44 +119,46 @@ button:disabled, button.btn-locked { background-color: #ccc !important; color: #
 
 .stats-locked { background: linear-gradient(180deg, #ffffff 0%, #f9f9f9 100%); border: 2px dashed #ddd; text-align: center; }
 
-/* --- OVERLAYS --- */
-.success-overlay, .error-overlay {
+/* --- UNIFIED MASTER OVERLAY --- */
+.overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(255, 255, 255, 0.98);
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(5px);
     display: flex; justify-content: center; align-items: center;
-    z-index: 9999; text-align: center; padding: 20px;
+    z-index: 10000; padding: 20px; box-sizing: border-box;
 }
 
-.checkmark-circle {
-    width: 80px; height: 80px; border: 3px solid var(--secondary); border-radius: 50%;
-    display: inline-block; position: relative; margin-bottom: 15px;
+.overlay-card {
+    background: #fff;
+    width: 100%; max-width: 320px;
+    padding: 30px 20px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
 }
 
+/* Icons */
+.checkmark-circle { 
+    width: 60px; height: 60px; border: 3px solid var(--secondary); 
+    border-radius: 50%; display: inline-block; position: relative; margin-bottom: 15px; 
+}
 .checkmark::after {
-    content: ''; display: block; width: 20px; height: 40px;
+    content: ''; display: block; width: 15px; height: 30px;
     border: solid var(--secondary); border-width: 0 4px 4px 0;
-    transform: rotate(45deg); position: absolute; top: 10px; left: 28px;
+    transform: rotate(45deg); position: absolute; top: 7px; left: 21px;
 }
-
 .error-icon {
-    width: 80px; height: 80px; border: 3px solid var(--error); border-radius: 50%;
+    width: 60px; height: 60px; border: 3px solid var(--error); border-radius: 50%;
     display: inline-flex; justify-content: center; align-items: center;
-    font-size: 3rem; color: var(--error); margin-bottom: 20px;
+    font-size: 2.5rem; color: var(--error); margin-bottom: 15px;
 }
 
-/* Animated Fade for Modals */
-.error-overlay {
-    transition: opacity 0.3s ease;
-    backdrop-filter: blur(4px); /* Modern frosted glass effect */
-    background: rgba(0, 0, 0, 0.4); /* Darker background to focus on the choice */
-}
+/* Action Buttons inside Overlay */
+#overlay-actions { display: flex; gap: 10px; margin-top: 20px; }
 
-/* Ensure the delete button in the modal stays red */
-#modal-confirm-cancel-btn {
-    background-color: var(--error);
-    border: none;
-    color: white;
-}
+.primary-btn-full { background: var(--primary); color: white; padding: 12px; border-radius: 8px; flex: 1; border: none; font-weight: 700; text-transform: uppercase; font-size: 0.8rem; }
+.secondary-btn-full { background: transparent; color: var(--text-secondary); border: 1.5px solid #ddd; padding: 12px; border-radius: 8px; flex: 1; font-weight: 700; text-transform: uppercase; font-size: 0.8rem; }
+
 
 /* --- FILTER BAR --- */
 .filter-bar { display: flex; gap: 10px; margin-bottom: 10px; }

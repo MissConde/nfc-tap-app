@@ -1,8 +1,10 @@
-// app.js
+/**
+ * app.js - Optimized for Dance Tracker PWA 2026
+ */
 
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxfzP5GeX8PtGB3qvjrfBALtWNGLYLENRwNUZJT7TgQHyRt-y72u0ClXLg9LoEPIeza/exec"
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxfzP5GeX8PtGB3qvjrfBALtWNGLYLENRwNUZJT7TgQHyRt-y72u0ClXLg9LoEPIeza/exec";
 const urlParams = new URLSearchParams(window.location.search);
-const idFromURL = urlParams.get('id'); // The ID coming from the NFC chip
+const idFromURL = urlParams.get('id');
 
 let fullHistoryData = []; 
 
@@ -10,23 +12,74 @@ window.onload = async () => {
     const savedUser = JSON.parse(localStorage.getItem('danceAppUser'));
 
     if (savedUser && savedUser.chipID) {
-        // --- SCENARIO: USER IS ALREADY LINKED ---
-        if (idFromURL && idFromURL !== savedUser.chipID) {
-            // It's a partner's chip! Log the dance
-            handleAutoLog(savedUser.chipID, idFromURL);
-        }
-        
+        // --- LOGGED IN ---
         showView('dancer-view');
         loadDancerView();
+
+        if (idFromURL && idFromURL !== savedUser.chipID) {
+            handleAutoLog(savedUser.chipID, idFromURL);
+        }
     } else if (idFromURL) {
-        // --- SCENARIO: NEW USER TAPPING FOR FIRST TIME ---
+        // --- NEW CHIP DETECTED ---
         checkUserInSystem(idFromURL);
     } else {
+        // --- PROMPT SCAN ---
+        showView('scan-view');
         document.getElementById('scan-status').innerText = "Please tap your NFC chip to begin.";
     }
-    // Initialize button state on load
     validateFormState();
 };
+
+/** --- MASTER UI CONTROLLER (OVERLAYS) --- **/
+
+function showStatus(type, title, msg, isPersistent = false) {
+    const overlay = document.getElementById('master-overlay');
+    const successIcon = document.getElementById('icon-success');
+    const errorIcon = document.getElementById('icon-error');
+    const actions = document.getElementById('overlay-actions');
+
+    // Reset icons and actions
+    successIcon.classList.add('hidden');
+    errorIcon.classList.add('hidden');
+    actions.classList.add('hidden');
+
+    document.getElementById('overlay-title').innerText = title;
+    document.getElementById('overlay-msg').innerText = msg;
+
+    if (type === 'success') successIcon.classList.remove('hidden');
+    if (type === 'error' || type === 'confirm') errorIcon.classList.remove('hidden');
+
+    overlay.classList.remove('hidden');
+
+    if (!isPersistent) {
+        setTimeout(() => overlay.classList.add('hidden'), 2500);
+    }
+}
+
+function confirmAction(title, msg, confirmText = "Confirm") {
+    return new Promise((resolve) => {
+        const overlay = document.getElementById('master-overlay');
+        const actions = document.getElementById('overlay-actions');
+        const primaryBtn = document.getElementById('overlay-primary-btn');
+        const secondaryBtn = document.getElementById('overlay-secondary-btn');
+
+        showStatus('confirm', title, msg, true);
+        actions.classList.remove('hidden');
+        
+        primaryBtn.innerText = confirmText;
+        primaryBtn.className = (confirmText === "Delete") ? "primary-btn-full btn-danger" : "primary-btn-full";
+
+        const cleanup = (choice) => {
+            overlay.classList.add('hidden');
+            primaryBtn.onclick = null;
+            secondaryBtn.onclick = null;
+            resolve(choice);
+        };
+
+        primaryBtn.onclick = () => cleanup(true);
+        secondaryBtn.onclick = () => cleanup(false);
+    });
+}
 
 /** --- DATA LOADING & REFRESH --- **/
 
@@ -35,17 +88,12 @@ async function loadDancerView() {
     if (!user) return;
 
     try {
-        // 1. Fetch History from Google
         const resp = await fetch(`${WEB_APP_URL}?action=getHistory&id=${user.chipID}`);
         fullHistoryData = await resp.json();
         
-        // 2. Update UI Basics
         document.getElementById('displayName').innerText = user.alias;
-        
-        // 3. Render Table
         renderHistoryTable(fullHistoryData);
         
-        // 4. Check Stats Unlock Status
         const hasUnlocked = localStorage.getItem('statsUnlocked') === 'true';
         if (hasUnlocked) {
             document.getElementById('stats-placeholder').classList.add('hidden');
@@ -53,145 +101,139 @@ async function loadDancerView() {
             calculateAndDisplayStats();
         }
     } catch (e) {
-        console.error("Failed to load dancer view", e);
+        console.error("Failed to load view", e);
     }
 }
 
-/**
- * DANCE INTERACTION LOGIC (NFC TAP)
- */
+/** --- DANCE INTERACTIONS --- **/
 
 async function handleAutoLog(myID, partnerID) {
     try {
-        // We use GET for logDance to keep it fast
         const resp = await fetch(`${WEB_APP_URL}?action=logDance&scannerId=${myID}&targetId=${partnerID}`);
         const result = await resp.json();
         
-        const overlay = document.getElementById('success-overlay');
-        const title = overlay.querySelector('h3');
-        const msg = overlay.querySelector('p');
-
         if (result.status === "Confirmed") {
-            title.innerText = "Dance Confirmed!";
-            msg.innerText = "Double-tap handshake complete.";
+            showStatus('success', 'Dance Confirmed!', 'Double-tap handshake complete.');
             if (navigator.vibrate) navigator.vibrate([100, 50, 100]); 
         } else {
-            title.innerText = "Dance Logged!";
-            msg.innerText = "Waiting for partner to scan you back...";
+            showStatus('success', 'Dance Logged', 'Waiting for partner to scan back.');
         }
-
-        overlay.classList.remove('hidden');
-        setTimeout(() => overlay.classList.add('hidden'), 3000);
-        
-       // Refresh the UI data
-       loadDancerView(); 
+        loadDancerView(); 
     } catch (e) {
-        console.error("Auto-log failed", e);
-        showError("Dance logging failed. Check connection.");
+        showStatus('error', 'Tap Failed', 'Check your internet connection.');
     }
 }
-
-/**
- * BACKUP PLAN: MANUAL APPROVALS
- */
-
-// async function checkPendingApprovals(myID) {
-//     try {
-//         const resp = await fetch(`${WEB_APP_URL}?action=getPending&id=${myID}`);
-//         const pending = await resp.json();
-        
-//         const container = document.getElementById('pending-approvals');
-//         const list = document.getElementById('approvals-list');
-        
-//         if (pending && pending.length > 0) {
-//             container.classList.remove('hidden');
-//             list.innerHTML = pending.map(dance => `
-//                 <div class="approval-card">
-//                     <div class="approval-info">
-//                         <strong>${dance.partnerAlias}</strong> scanned you.
-//                     </div>
-//                     <button class="secondary-btn" onclick="confirmDanceManually('${dance.rowId}')">Confirm</button>
-//                 </div>
-//             `).join('');
-//         } else if (container) {
-//             container.classList.add('hidden');
-//         }
-//     } catch (e) {
-//         console.error("Pending check failed", e);
-//     }
-// }
 
 window.confirmDanceManually = async function(rowId) {
     try {
         await fetch(`${WEB_APP_URL}?action=confirmManual&rowId=${rowId}`);
-        loadDancerView(); // Refresh everything
+        showStatus('success', 'Confirmed', 'Dance added to your history.');
+        loadDancerView();
     } catch (e) {
-        showError("Manual confirmation failed.");
+        showStatus('error', 'Error', 'Could not confirm.');
     }
 };
 
-/** --- STATS CALCULATION --- **/
+async function cancelDance(rowId) {
+    const confirmed = await confirmAction("Delete Log?", "This will remove the pending dance from your history.", "Delete");
+    if (confirmed) {
+        try {
+            await fetch(`${WEB_APP_URL}?action=cancelDance&rowId=${rowId}`);
+            showStatus('success', 'Deleted', 'Log removed.');
+            loadDancerView();
+        } catch (e) {
+            showStatus('error', 'Error', 'Failed to delete.');
+        }
+    }
+}
+
+/** --- UI RENDERING & FILTERING --- **/
+
+function renderHistoryTable(data) {
+    const tbody = document.getElementById('historyBody');
+    if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 20px; color: #999;">No matches found.</td></tr>';
+        return;
+    }
+
+    const sortedData = [...data].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    tbody.innerHTML = sortedData.map(row => {
+        const date = new Date(row.timestamp);
+        const timeStr = `${date.toLocaleDateString([], {weekday:'short'})} ${date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+        const isConfirmed = row.status === 'Confirmed';
+        
+        let statusHtml = '';
+        if (isConfirmed) {
+            statusHtml = `<span class="status-pill status-confirmed">Confirmed</span>`;
+        } else if (row.isTarget) {
+            statusHtml = `<button class="status-pill" onclick="confirmDanceManually('${row.rowId}')">Confirm?</button>`;
+        } else {
+            statusHtml = `
+                <div style="display: flex; align-items: center; gap: 8px; justify-content: flex-end;">
+                    <span class="status-pill status-waiting">Waiting</span>
+                    <button onclick="cancelDance('${row.rowId}')" style="background:none; color:var(--error); width:auto; padding:5px; font-size:1.4rem; border:none;">&times;</button>
+                </div>`;
+        }
+
+        return `<tr>
+            <td><strong>${row.partnerAlias}</strong></td>
+            <td><small style="color: #888;">${timeStr}</small></td>
+            <td style="text-align: right;">${statusHtml}</td>
+        </tr>`;
+    }).join('');
+}
+
+function filterHistory(type) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(`filter-${type.toLowerCase()}`).classList.add('active');
+
+    if (type === 'all') {
+        renderHistoryTable(fullHistoryData);
+    } else if (type === 'Pending') {
+        const toConfirm = fullHistoryData.filter(item => item.status === 'Pending' && item.isTarget === true);
+        renderHistoryTable(toConfirm);
+    }
+}
+
+/** --- STATS & REGISTRATION --- **/
 
 function calculateAndDisplayStats() {
     const confirmed = fullHistoryData.filter(d => d.status === 'Confirmed');
     document.getElementById('totalDances').innerText = confirmed.length;
     
     if (confirmed.length > 0) {
-        // 2. Peak Hour Calculation
         const hours = confirmed.map(d => new Date(d.timestamp).getHours());
         const hourCounts = {};
         hours.forEach(h => { hourCounts[h] = (hourCounts[h] || 0) + 1; });
         const peakHour = Object.keys(hourCounts).reduce((a, b) => hourCounts[a] > hourCounts[b] ? a : b);
         document.getElementById('peakTime').innerText = `${peakHour}:00`;
-
-        // 3. Favorite Partner (Optional - you'd need a div for this)
-        const partners = confirmed.map(d => d.partnerAlias);
-        const partnerCounts = {};
-        partners.forEach(p => { partnerCounts[p] = (partnerCounts[p] || 0) + 1; });
-        const topPartner = Object.keys(partnerCounts).reduce((a, b) => partnerCounts[a] > partnerCounts[b] ? a : b);
-        console.log("Your top partner is:", topPartner);
     }
 }
-
-/**
- * REGISTRATION & VALIDATION LOGIC & NAVIGATION
- */
 
 async function checkUserInSystem(id) {
     try {
         const resp = await fetch(`${WEB_APP_URL}?action=check&id=${id}`);
         const result = await resp.json();
-
         if (result.registered) {
-            // Found them! Auto-login
             localStorage.setItem('danceAppUser', JSON.stringify({
-                chipID: id,
-                alias: result.alias,
-                role: result.role,
-                userKey: result.storedKey
+                chipID: id, alias: result.alias, role: result.role, userKey: result.storedKey
             }));
             location.reload();
         } else {
-            // Not found, go to Registration
             showView('registration-view');
         }
-    } catch (e) { showError("Connection error. Please try again."); }
+    } catch (e) { 
+        showStatus('error', 'Connection Error', 'Please tap again.'); 
+    }
 }
 
 document.getElementById('regForm').onsubmit = async (e) => {
     e.preventDefault();
-    const form = e.target;
     const roleValue = document.getElementById('role').value;
-
-    if (!form.checkValidity() || !roleValue || form.querySelector('.is-invalid')) {
-        form.classList.add('was-validated'); 
-        return; 
-    }
+    if (!e.target.checkValidity() || !roleValue) return;
 
     const userKey = Math.random().toString(36).substring(2, 8).toUpperCase();
-    let igHandle = document.getElementById('igUser').value.trim();
-    if (igHandle.startsWith('@')) igHandle = igHandle.substring(1);
-
     const payload = {
         action: "register",
         chipID: idFromURL,
@@ -200,36 +242,25 @@ document.getElementById('regForm').onsubmit = async (e) => {
         fullName: document.getElementById('fullName').value.trim(),
         email: document.getElementById('email').value.trim(),
         role: roleValue,
-        igUser: igHandle,
+        igUser: document.getElementById('igUser').value.trim().replace('@', ''),
         consent: true
     };
 
     const submitBtn = document.getElementById('submitBtn');
-    submitBtn.innerText = "Linking Chip...";
+    submitBtn.innerText = "Linking...";
     submitBtn.disabled = true;
 
     try {
-        await fetch(WEB_APP_URL, { 
-            method: 'POST', 
-            mode: 'no-cors', 
-            headers: { 'Content-Type': 'text/plain' }, 
-            body: JSON.stringify(payload) 
-        });
-
-        document.getElementById('success-overlay').classList.remove('hidden');
-
+        await fetch(WEB_APP_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
+        showStatus('success', 'Chip Linked!', 'Welcome to the festival.');
         setTimeout(() => {
             localStorage.setItem('danceAppUser', JSON.stringify({ 
-                chipID: idFromURL, 
-                alias: payload.alias, 
-                userKey: userKey,
-                role: payload.role
+                chipID: idFromURL, alias: payload.alias, userKey: userKey, role: payload.role
             }));
-            location.reload(); // Refresh to initialize the Dashboard state
-         }, 1500);
+            location.reload();
+         }, 2000);
     } catch (error) {
-        showError("Registration failed. Please try again.");
-        submitBtn.innerText = "Link My Chip";
+        showStatus('error', 'Failed', 'Try linking again.');
         submitBtn.disabled = false;
     }
 };
@@ -248,138 +279,27 @@ document.getElementById('feedbackForm').onsubmit = async (e) => {
     try {
         await fetch(WEB_APP_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(feedback) });
         localStorage.setItem('statsUnlocked', 'true');
-        document.getElementById('feedback-overlay').classList.add('hidden');
+        hideFeedback();
         loadDancerView(); 
-    } catch (e) { showError("Failed to save feedback."); }
+    } catch (e) { 
+        showStatus('error', 'Error', 'Feedback not saved.'); 
+    }
 };
 
-/** --- UI HELPERS --- **/
-
-function renderHistoryTable(data) {
-    const tbody = document.getElementById('historyBody');
-    if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 20px; color: #999;">No pending confirmations.</td></tr>';
-        return;
-    }
-
-    // 1. SORTING: Ensure newest dances are at the top
-    const sortedData = [...data].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    // 2. RENDERING: Generate clean HTML
-    tbody.innerHTML = sortedData.map(row => {
-        const date = new Date(row.timestamp);
-        const timeStr = `${date.toLocaleDateString([], {weekday:'short'})} ${date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
-        
-        const isConfirmed = row.status === 'Confirmed';
-        let statusHtml = '';
-
-        if (isConfirmed) {
-            statusHtml = `<span class="status-pill status-confirmed">Confirmed</span>`;
-        } else if (row.isTarget) {
-            // PURPLE PRIMARY BUTTON: Needs my action
-            statusHtml = `<button class="status-pill" onclick="confirmDanceManually('${row.rowId}')">Confirm?</button>`;
-        } else {
-            // Option to Cancel (If I made a mistake scanning)
-            statusHtml = `
-                <div style="display: flex; align-items: center; gap: 5px; justify-content: flex-end;">
-                    <span class="status-pill status-waiting">Waiting</span>
-                    <button onclick="cancelDance('${row.rowId}')" style="background:none; color:#ff4b4b; width:auto; padding:5px; font-size:1.2rem;">&times;</button>
-                </div>`;
-        }
-
-        return `<tr>
-            <td><strong>${row.partnerAlias}</strong></td>
-            <td><small style="color: #888;">${timeStr}</small></td>
-            <td style="text-align: right;">${statusHtml}</td>
-        </tr>`;
-    }).join('');
-}
-
-// Pending' now only shows what YOU need to confirm
-function filterHistory(type) {
-    // Update button visuals
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    const activeBtn = document.getElementById(`filter-${type.toLowerCase()}`);
-    if (activeBtn) activeBtn.classList.add('active');
-
-    if (type === 'all') {
-        renderHistoryTable(fullHistoryData);
-    } else if (type === 'Pending') {
-        // Only show dances I haven't confirmed yet (I am the target of the scan)
-        const toConfirm = fullHistoryData.filter(item => item.status === 'Pending' && item.isTarget === true);
-        renderHistoryTable(toConfirm);
-    }
-}
-
-function requestConfirmation() {
-    return new Promise((resolve) => {
-        const modal = document.getElementById('confirm-modal');
-        const cancelBtn = document.getElementById('modal-cancel-btn');
-        const confirmBtn = document.getElementById('modal-confirm-btn');
-
-        modal.classList.remove('hidden');
-
-        // Handler for choice
-        const handleChoice = (choice) => {
-            modal.classList.add('hidden');
-            cancelBtn.removeEventListener('click', () => handleChoice(false));
-            confirmBtn.removeEventListener('click', () => handleChoice(true));
-            resolve(choice);
-        };
-
-        cancelBtn.addEventListener('click', () => handleChoice(false));
-        confirmBtn.addEventListener('click', () => handleChoice(true));
-    });
-}
-
-async function cancelDance(rowId) {
-    const confirmed = await requestConfirmation(); // Wait for user touch
-    
-    if (confirmed) {
-        try {
-            // Show a "Deleting..." state if you want, or just fetch
-            await fetch(`${WEB_APP_URL}?action=cancelDance&rowId=${rowId}`);
-            
-            // Success Feedback
-            showSuccessOverlay("Deleted", "Log removed successfully.");
-            loadDancerView();
-        } catch (e) {
-            showError("Could not delete. Check connection.");
-        }
-    }
-}
-
-// function showView(viewId) {
-//     document.querySelectorAll('.card, #registration-view, #dancer-view, #scan-view').forEach(v => v.classList.add('hidden'));
-//     document.getElementById(viewId).classList.remove('hidden');
-// }
+/** --- UTILS --- **/
 
 function showView(viewId) {
-    // 1. Hide the three main high-level containers
-    const views = ['scan-view', 'registration-view', 'dancer-view', 'organizer-view'];
-    views.forEach(id => {
+    ['scan-view', 'registration-view', 'dancer-view', 'organizer-view'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
     });
-
-    // 2. Show the requested one
-    const target = document.getElementById(viewId);
-    if (target) {
-        target.classList.remove('hidden');
-    }
+    document.getElementById(viewId).classList.remove('hidden');
 }
 
 window.selectRole = function(roleValue) {
-    const roleInput = document.getElementById('role');
-    if (roleInput) roleInput.value = roleValue;
-
+    document.getElementById('role').value = roleValue;
     document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('active'));
-    const activeBtn = roleValue === 'Leader' ? document.getElementById('btn-leader') : document.getElementById('btn-follower');
-    if (activeBtn) activeBtn.classList.add('active');
-
-    const roleError = document.getElementById('role-error');
-    if (roleError) roleError.style.display = 'none';
-
+    document.getElementById('btn-' + roleValue.toLowerCase()).classList.add('active');
     validateFormState();
 };
 
@@ -387,83 +307,18 @@ function validateFormState() {
     const form = document.getElementById('regForm');
     const submitBtn = document.getElementById('submitBtn');
     if (!form || !submitBtn) return;
-
-    const roleValue = document.getElementById('role').value;
-    const hasUniquenessErrors = form.querySelector('.is-invalid');
-    const isFormValid = form.checkValidity();
-
-    if (isFormValid && roleValue && !hasUniquenessErrors) {
-        submitBtn.disabled = false;
-        submitBtn.classList.remove('btn-locked');
-    } else {
-        submitBtn.disabled = true;
-        submitBtn.classList.add('btn-locked');
-    }
+    const isFormValid = form.checkValidity() && document.getElementById('role').value !== "";
+    submitBtn.disabled = !isFormValid;
 }
-
-async function checkUniqueness(field, value) {
-    if (!value) return false; 
-    try {
-        const resp = await fetch(`${WEB_APP_URL}?action=checkUnique&field=${field}&value=${encodeURIComponent(value)}`);
-        const result = await resp.json();
-        return result.exists;
-    } catch (e) { return false; }
-}
-
-document.getElementById('alias').addEventListener('blur', async (e) => {
-    const input = e.target;
-    if (!input.value.trim()) return;
-    const isTaken = await checkUniqueness('alias', input.value.trim());
-    const errorSpan = input.nextElementSibling;
-    if (isTaken) {
-        input.classList.add('is-invalid');
-        if (errorSpan) errorSpan.innerText = "This Alias is already taken.";
-    } else {
-        input.classList.remove('is-invalid');
-        if (errorSpan) errorSpan.innerText = "Alias cannot contain spaces";
-    }
-    validateFormState();
-});
-
-document.getElementById('email').addEventListener('blur', async (e) => {
-    const input = e.target;
-    if (!input.value.trim()) return;
-    const isTaken = await checkUniqueness('email', input.value.trim());
-    const errorSpan = input.nextElementSibling;
-    if (isTaken) {
-        input.classList.add('is-invalid');
-        if (errorSpan) errorSpan.innerText = "This email is already registered.";
-    } else {
-        input.classList.remove('is-invalid');
-        if (errorSpan) errorSpan.innerText = "Please enter a valid email address";
-    }
-    validateFormState();
-});
-
-document.querySelectorAll('input').forEach(input => {
-    input.addEventListener('input', () => {
-        input.classList.remove('is-invalid');
-        validateFormState();
-    });
-});
-
-function showError(msg) {
-    const errorOverlay = document.getElementById('error-overlay');
-    const errorMsgText = document.getElementById('error-message');
-    if (errorMsgText) errorMsgText.innerText = msg;
-    if (errorOverlay) errorOverlay.classList.remove('hidden');
-}
-
-window.hideErrorOverlay = function() {
-    document.getElementById('error-overlay').classList.add('hidden');
-};
-
-function showFeedbackForm() { document.getElementById('feedback-overlay').classList.remove('hidden'); }
-function hideFeedback() { document.getElementById('feedback-overlay').classList.add('hidden'); }
 
 window.unlinkChip = function() {
-    if(confirm("Unlink this chip from this phone?")) {
-        localStorage.removeItem('danceAppUser');
-        location.reload();
-    }
+    confirmAction("Unlink Chip?", "You will need to scan your chip again to log in.", "Unlink").then(choice => {
+        if (choice) {
+            localStorage.removeItem('danceAppUser');
+            location.reload();
+        }
+    });
 };
+
+function hideFeedback() { document.getElementById('feedback-overlay').classList.add('hidden'); }
+function showFeedbackForm() { document.getElementById('feedback-overlay').classList.remove('hidden'); }

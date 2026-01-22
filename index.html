@@ -14,7 +14,7 @@
             <h2>Welcome</h2>
             <p id="scan-status">Please tap your NFC chip to begin.</p>
         </div>
-        <div id="registration-view" class="card">
+        <div id="registration-view" class="card hidden">
             <h2>Dancer Profile</h2>
             <form id="regForm" novalidate> <div class="input-group">
                     <input type="text" id="fullName" placeholder="Full Name" required 
@@ -51,7 +51,7 @@
             </form>
         </div>
 
-        <div id="dancer-view">
+        <div id="dancer-view" class="hidden">
             <div class="card header-card">
                 <h2 id="displayName">Loading...</h2>
                 <button class="secondary-btn btn-sm" onclick="unlinkChip()">Unlink Chip</button>
@@ -133,7 +133,7 @@
                 </div>
             </div>
         </div>
-        <div id="success-overlay" class="success-overlay hidden">
+        <!-- <div id="success-overlay" class="success-overlay hidden">
             <div class="success-content">
                 <div class="checkmark-circle">
                     <div class="checkmark draw"></div>
@@ -148,6 +148,38 @@
                 <h3>Something went wrong</h3>
                 <p id="error-message">Check your connection and try again.</p>
                 <button type="button" class="secondary-btn" onclick="hideErrorOverlay()">Try Again</button>
+            </div>
+        </div>
+    </div> -->
+    <!-- <div id="confirm-modal" class="error-overlay hidden">
+        <div class="card feedback-card" style="text-align: center;">
+            <h3 style="color: var(--text-primary);">Delete Log?</h3>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 20px;">
+                This will remove the pending dance from your history.
+            </p>
+            <div style="display: flex; gap: 10px;">
+                <button id="modal-cancel-btn" class="secondary-btn" style="width: 100%; height: 45px;">Back</button>
+                <button id="modal-confirm-btn" class="primary-btn" style="width: 100%; height: 45px; background: var(--error);">Delete</button>
+            </div>
+        </div>
+    </div> -->
+    <div id="master-overlay" class="overlay hidden">
+        <div class="overlay-card">
+            <div id="overlay-icon-container">
+                <div id="icon-success" class="hidden">
+                    <div class="checkmark-circle"><div class="checkmark"></div></div>
+                </div>
+                <div id="icon-error" class="hidden">
+                    <div class="error-icon">!</div>
+                </div>
+            </div>
+    
+            <h3 id="overlay-title">Title</h3>
+            <p id="overlay-msg">Message goes here.</p>
+    
+            <div id="overlay-actions" class="hidden">
+                <button id="overlay-secondary-btn" class="secondary-btn-full">Cancel</button>
+                <button id="overlay-primary-btn" class="primary-btn-full">Confirm</button>
             </div>
         </div>
     </div>

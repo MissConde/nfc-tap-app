@@ -1,6 +1,6 @@
 // app.js
 
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzKEAQo8AlKokHvZyYxyCuwWm4IXtMiW6R8R9tW-3pRySryOpKb99lqxNwnIYEPH43L/exec"
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxfzP5GeX8PtGB3qvjrfBALtWNGLYLENRwNUZJT7TgQHyRt-y72u0ClXLg9LoEPIeza/exec"
 const urlParams = new URLSearchParams(window.location.search);
 const idFromURL = urlParams.get('id'); // The ID coming from the NFC chip
 
@@ -137,12 +137,19 @@ function calculateAndDisplayStats() {
     document.getElementById('totalDances').innerText = confirmed.length;
     
     if (confirmed.length > 0) {
-        // Logic for Peak Time
+        // 2. Peak Hour Calculation
         const hours = confirmed.map(d => new Date(d.timestamp).getHours());
-        const peakHour = hours.sort((a,b) =>
-              hours.filter(v => v===a).length - hours.filter(v => v===b).length
-        ).pop();
+        const hourCounts = {};
+        hours.forEach(h => { hourCounts[h] = (hourCounts[h] || 0) + 1; });
+        const peakHour = Object.keys(hourCounts).reduce((a, b) => hourCounts[a] > hourCounts[b] ? a : b);
         document.getElementById('peakTime').innerText = `${peakHour}:00`;
+
+        // 3. Favorite Partner (Optional - you'd need a div for this)
+        const partners = confirmed.map(d => d.partnerAlias);
+        const partnerCounts = {};
+        partners.forEach(p => { partnerCounts[p] = (partnerCounts[p] || 0) + 1; });
+        const topPartner = Object.keys(partnerCounts).reduce((a, b) => partnerCounts[a] > partnerCounts[b] ? a : b);
+        console.log("Your top partner is:", topPartner);
     }
 }
 
@@ -272,8 +279,12 @@ function renderHistoryTable(data) {
             // PURPLE PRIMARY BUTTON: Needs my action
             statusHtml = `<button class="status-pill" onclick="confirmDanceManually('${row.rowId}')">Confirm?</button>`;
         } else {
-            // GRAY BORDER: Waiting for the other person
-            statusHtml = `<span class="status-pill status-waiting">Waiting</span>`;
+            // Option to Cancel (If I made a mistake scanning)
+            statusHtml = `
+                <div style="display: flex; align-items: center; gap: 5px; justify-content: flex-end;">
+                    <span class="status-pill status-waiting">Waiting</span>
+                    <button onclick="cancelDance('${row.rowId}')" style="background:none; color:#ff4b4b; width:auto; padding:5px; font-size:1.2rem;">&times;</button>
+                </div>`;
         }
 
         return `<tr>
@@ -297,6 +308,44 @@ function filterHistory(type) {
         // Only show dances I haven't confirmed yet (I am the target of the scan)
         const toConfirm = fullHistoryData.filter(item => item.status === 'Pending' && item.isTarget === true);
         renderHistoryTable(toConfirm);
+    }
+}
+
+function requestConfirmation() {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('confirm-modal');
+        const cancelBtn = document.getElementById('modal-cancel-btn');
+        const confirmBtn = document.getElementById('modal-confirm-btn');
+
+        modal.classList.remove('hidden');
+
+        // Handler for choice
+        const handleChoice = (choice) => {
+            modal.classList.add('hidden');
+            cancelBtn.removeEventListener('click', () => handleChoice(false));
+            confirmBtn.removeEventListener('click', () => handleChoice(true));
+            resolve(choice);
+        };
+
+        cancelBtn.addEventListener('click', () => handleChoice(false));
+        confirmBtn.addEventListener('click', () => handleChoice(true));
+    });
+}
+
+async function cancelDance(rowId) {
+    const confirmed = await requestConfirmation(); // Wait for user touch
+    
+    if (confirmed) {
+        try {
+            // Show a "Deleting..." state if you want, or just fetch
+            await fetch(`${WEB_APP_URL}?action=cancelDance&rowId=${rowId}`);
+            
+            // Success Feedback
+            showSuccessOverlay("Deleted", "Log removed successfully.");
+            loadDancerView();
+        } catch (e) {
+            showError("Could not delete. Check connection.");
+        }
     }
 }
 

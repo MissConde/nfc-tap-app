@@ -144,6 +144,20 @@ button:disabled, button.btn-locked { background-color: #ccc !important; color: #
     font-size: 3rem; color: var(--error); margin-bottom: 20px;
 }
 
+/* Animated Fade for Modals */
+.error-overlay {
+    transition: opacity 0.3s ease;
+    backdrop-filter: blur(4px); /* Modern frosted glass effect */
+    background: rgba(0, 0, 0, 0.4); /* Darker background to focus on the choice */
+}
+
+/* Ensure the delete button in the modal stays red */
+#modal-confirm-cancel-btn {
+    background-color: var(--error);
+    border: none;
+    color: white;
+}
+
 /* --- FILTER BAR --- */
 .filter-bar { display: flex; gap: 10px; margin-bottom: 10px; }
 .filter-btn { flex: 1; padding: 8px; font-size: 0.75rem; background: #eee; color: #666; border-radius: 20px; border: none; cursor: pointer; }

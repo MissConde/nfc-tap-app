@@ -255,7 +255,11 @@ function renderHistoryTable(data) {
         return;
     }
 
-    tbody.innerHTML = data.map(row => {
+    // 1. SORTING: Ensure newest dances are at the top
+    const sortedData = [...data].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    // 2. RENDERING: Generate clean HTML
+    tbody.innerHTML = sortedData.map(row => {
         const date = new Date(row.timestamp);
         const timeStr = `${date.toLocaleDateString([], {weekday:'short'})} ${date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
         
@@ -265,24 +269,42 @@ function renderHistoryTable(data) {
         if (isConfirmed) {
             statusHtml = `<span class="status-pill status-confirmed">Confirmed</span>`;
         } else if (row.isTarget) {
-            // "Confirm?" button looks just like the Unlink button now
-            statusHtml = `<button class="confirm-mini-btn" onclick="confirmDanceManually('${row.rowId}')">Confirm?</button>`;
+            // PURPLE PRIMARY BUTTON: Needs my action
+            statusHtml = `<button class="status-pill" onclick="confirmDanceManually('${row.rowId}')">Confirm?</button>`;
         } else {
-            statusHtml = `<span class="status-pill status-pending">Waiting</span>`;
+            // GRAY BORDER: Waiting for the other person
+            statusHtml = `<span class="status-pill status-waiting">Waiting</span>`;
         }
 
         return `<tr>
-            <td style="width: 40%;"><strong>${row.partnerAlias}</strong></td>
-            <td style="width: 30%;"><small style="color: #888;">${timeStr}</small></td>
-            <td style="width: 30%; text-align: right;">${statusHtml}</td>
+            <td><strong>${row.partnerAlias}</strong></td>
+            <td><small style="color: #888;">${timeStr}</small></td>
+            <td style="text-align: right;">${statusHtml}</td>
         </tr>`;
     }).join('');
+}
+
+// Pending' now only shows what YOU need to confirm
+function filterHistory(type) {
+    // Update button visuals
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    const activeBtn = document.getElementById(`filter-${type.toLowerCase()}`);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    if (type === 'all') {
+        renderHistoryTable(fullHistoryData);
+    } else if (type === 'Pending') {
+        // Only show dances I haven't confirmed yet (I am the target of the scan)
+        const toConfirm = fullHistoryData.filter(item => item.status === 'Pending' && item.isTarget === true);
+        renderHistoryTable(toConfirm);
+    }
 }
 
 // function showView(viewId) {
 //     document.querySelectorAll('.card, #registration-view, #dancer-view, #scan-view').forEach(v => v.classList.add('hidden'));
 //     document.getElementById(viewId).classList.remove('hidden');
 // }
+
 function showView(viewId) {
     // 1. Hide the three main high-level containers
     const views = ['scan-view', 'registration-view', 'dancer-view', 'organizer-view'];
@@ -396,16 +418,3 @@ window.unlinkChip = function() {
         location.reload();
     }
 };
-
-function filterHistory(type) {
-    // Update button visuals
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById(`filter-${type.toLowerCase()}`).classList.add('active');
-
-    if (type === 'all') {
-        renderHistoryTable(fullHistoryData);
-    } else {
-        const filtered = fullHistoryData.filter(item => item.status === type);
-        renderHistoryTable(filtered);
-    }
-}

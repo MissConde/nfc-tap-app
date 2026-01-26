@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -7,46 +8,51 @@
     <link rel="stylesheet" href="style.css">
     <script src="app.js" defer></script>
 </head>
+
 <body>
 
     <div class="container">
-        <div id="scan-view" class="card hidden">
+        <div id="scan-view" class="card">
             <h2>Welcome</h2>
             <p id="scan-status">Please tap your NFC chip to begin.</p>
         </div>
         <div id="registration-view" class="card hidden">
             <h2>Dancer Profile</h2>
-            <form id="regForm" novalidate> <div class="input-group">
-                    <input type="text" id="fullName" placeholder="Full Name" required 
-                           pattern=".*\s.*" title="Please enter first and last name">
+            <form id="regForm" novalidate>
+                <div class="input-group">
+                    <input type="text" id="fullName" placeholder="Full Name" required pattern=".*\s.*"
+                        title="Please enter first and last name">
                     <span class="error-msg">Please enter First and Last name</span>
                 </div>
-        
+
                 <div class="input-group">
-                    <input type="text" id="alias" placeholder="Public Alias (Salsera10)" required 
-                           pattern="^\S+$" title="No spaces allowed">
+                    <input type="text" id="alias" placeholder="Public Alias (Salsera10)" required pattern="^\S+$"
+                        title="No spaces allowed">
                     <span class="error-msg" id="alias-error">Alias cannot contain spaces or is already taken</span>
                 </div>
-        
+
                 <div class="input-group">
                     <input type="email" id="email" placeholder="Email Address" required>
-                    <span class="error-msg" id="email-error">Please enter a valid email address or email is already registered</span>
+                    <span class="error-msg" id="email-error">Please enter a valid email address or email is already
+                        registered</span>
                 </div>
-        
+
                 <div class="input-group">
                     <input type="text" id="igUser" placeholder="Instagram User (Optional)">
                 </div>
-        
+
                 <p style="margin-bottom: 8px; font-weight: bold; color: var(--text-secondary);">Your Role:</p>
                 <div class="role-container">
-                    <button type="button" class="role-btn" id="btn-leader" onclick="selectRole('Leader')">Leader</button>
-                    <button type="button" class="role-btn" id="btn-follower" onclick="selectRole('Follower')">Follower</button>
+                    <button type="button" class="role-btn" id="btn-leader"
+                        onclick="selectRole('Leader')">Leader</button>
+                    <button type="button" class="role-btn" id="btn-follower"
+                        onclick="selectRole('Follower')">Follower</button>
                 </div>
                 <input type="hidden" id="role" required>
                 <span id="role-error" class="error-msg">Please select a role</span>
-        
+
                 <p class="legal-text">By continuing, you agree to share your data with organizers.</p>
-                
+
                 <button type="submit" id="submitBtn" class="btn-locked" disabled>Link My Chip</button>
             </form>
         </div>
@@ -56,70 +62,104 @@
                 <h2 id="displayName">Loading...</h2>
                 <button class="secondary-btn btn-sm" onclick="unlinkChip()">Unlink Chip</button>
             </div>
-        
-            <div class="card">
-                <h3>My Dance History</h3>
-                <div class="filter-bar">
-                    <button class="filter-btn active" id="filter-all" onclick="filterHistory('all')">All</button>
-                    <button class="filter-btn" id="filter-pending" onclick="filterHistory('Pending')">Pending</button>
+
+            <div class="card" id="history-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <h3 style="margin:0;">My Dance History</h3>
+                    <button class="secondary-btn btn-sm" id="toggle-history-btn" onclick="toggleHistory()">Hide</button>
                 </div>
-                <div class="table-container">
-                    <table id="historyTable">
-                        <thead>
-                            <tr>
-                                <th>Partner</th>
-                                <th>Time</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="historyBody"></tbody>
-                    </table>
+
+                <div id="history-content">
+                    <div class="filter-bar">
+                        <button class="filter-btn active" id="filter-all" onclick="filterHistory('all')">All</button>
+                        <button class="filter-btn" id="filter-pending"
+                            onclick="filterHistory('Pending')">Pending</button>
+                    </div>
+                    <div class="table-container">
+                        <table id="historyTable">
+                            <thead>
+                                <tr>
+                                    <th>Partner</th>
+                                    <th>Time</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyBody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-        
+
             <div id="stats-section" class="card stats-locked">
                 <div id="stats-placeholder">
-                    <h3>🔒 Festival Insights</h3>
-                    <p>Unlock your stats by giving feedback!</p>
-                    <button class="primary-btn" onclick="showFeedbackForm()">Give Feedback & Unlock</button>
+                    <h3>🔒 Unlock Your Highlights!</h3>
+                    <p>Share your vibe to reveal your personal dance stats.</p>
+                    <button class="primary-btn" onclick="showFeedbackForm()">Unlock Now</button>
                 </div>
-                
+
                 <div id="stats-content" class="hidden">
-                    <h3>Your Festival Wrap-up</h3>
+                    <h3>🎉 Your Festival Vibes</h3>
                     <div class="stat-grid">
-                        <div class="stat-item">
-                            <small>Total Confirmed</small>
-                            <div id="totalDances">0</div>
+                        <div class="stat-card">
+                            <div class="stat-emoji">💃</div>
+                            <div class="stat-value" id="stat-total">0</div>
+                            <div class="stat-label">Total Dances</div>
                         </div>
-                        <div class="stat-item">
-                            <small>Peak Time</small>
-                            <div id="peakTime">--:--</div>
+                        <div class="stat-card">
+                            <div class="stat-emoji">🔥</div>
+                            <div class="stat-value" id="stat-peak">--:--</div>
+                            <div class="stat-label">Peak Hour</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-emoji">👯</div>
+                            <div class="stat-value" id="stat-unique">0</div>
+                            <div class="stat-label">Unique Partners</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-emoji">🏆</div>
+                            <div class="stat-value" id="stat-favorite">--</div>
+                            <div class="stat-label">Favorite Partner</div>
                         </div>
                     </div>
-                    </div>
+                </div>
             </div>
         </div>
-        
+
         <div id="feedback-overlay" class="error-overlay hidden">
             <div class="card feedback-card">
                 <h3>Festival Feedback</h3>
                 <form id="feedbackForm">
+                    <label>How was the vibe?</label>
+                    <select id="vibeRating" required>
+                        <option value="5">🔥 Amazing</option>
+                        <option value="4">😊 Good</option>
+                        <option value="3">😐 Okay</option>
+                        <option value="2">🥱 Boring</option>
+                    </select>
+
                     <label>How was the music?</label>
                     <select id="musicRating" required>
-                        <option value="5">Excellent</option>
-                        <option value="4">Good</option>
-                        <option value="3">Average</option>
-                        <option value="2">Poor</option>
+                        <option value="5">🎶 Loved it</option>
+                        <option value="4">👍 Good</option>
+                        <option value="3">🤷 Average</option>
+                        <option value="2">👎 Not my style</option>
                     </select>
-                    
+
                     <label>Favorite Partner (Alias)?</label>
-                    <input type="text" id="favPartner" placeholder="Who did you enjoy dancing with?">
-        
-                    <label>Anything else?</label>
-                    <textarea id="comments" rows="3"></textarea>
-                    
-                    <button type="submit" class="primary-btn">Submit & Unlock Stats</button>
-                    <button type="button" class="secondary-btn" onclick="hideFeedback()">Not yet</button>
+                    <input type="text" id="favPartner" placeholder="Who was your best dance?">
+
+                    <label>Will you come back next year?</label>
+                    <select id="returnChance" required>
+                        <option value="yes">Yes, absolutely!</option>
+                        <option value="maybe">Maybe</option>
+                        <option value="no">No</option>
+                    </select>
+
+                    <label>Any suggestions?</label>
+                    <textarea id="comments" rows="2" placeholder="Tell us what we can improve..."></textarea>
+
+                    <button type="submit" class="primary-btn">Submit & Unlock Highlights</button>
+                    <button type="button" class="secondary-btn" onclick="hideFeedback()">Cancel</button>
                 </form>
             </div>
         </div>
@@ -151,7 +191,7 @@
             </div>
         </div>
     </div> -->
-    <!-- <div id="confirm-modal" class="error-overlay hidden">
+        <!-- <div id="confirm-modal" class="error-overlay hidden">
         <div class="card feedback-card" style="text-align: center;">
             <h3 style="color: var(--text-primary);">Delete Log?</h3>
             <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 20px;">
@@ -163,25 +203,28 @@
             </div>
         </div>
     </div> -->
-    <div id="master-overlay" class="overlay hidden">
-        <div class="overlay-card">
-            <div id="overlay-icon-container">
-                <div id="icon-success" class="hidden">
-                    <div class="checkmark-circle"><div class="checkmark"></div></div>
+        <div id="master-overlay" class="overlay hidden">
+            <div class="overlay-card">
+                <div id="overlay-icon-container">
+                    <div id="icon-success" class="hidden">
+                        <div class="checkmark-circle">
+                            <div class="checkmark"></div>
+                        </div>
+                    </div>
+                    <div id="icon-error" class="hidden">
+                        <div class="error-icon">!</div>
+                    </div>
                 </div>
-                <div id="icon-error" class="hidden">
-                    <div class="error-icon">!</div>
+
+                <h3 id="overlay-title">Title</h3>
+                <p id="overlay-msg">Message goes here.</p>
+
+                <div id="overlay-actions" class="hidden">
+                    <button id="overlay-secondary-btn" class="secondary-btn-full">Cancel</button>
+                    <button id="overlay-primary-btn" class="primary-btn-full">Confirm</button>
                 </div>
-            </div>
-    
-            <h3 id="overlay-title">Title</h3>
-            <p id="overlay-msg">Message goes here.</p>
-    
-            <div id="overlay-actions" class="hidden">
-                <button id="overlay-secondary-btn" class="secondary-btn-full">Cancel</button>
-                <button id="overlay-primary-btn" class="primary-btn-full">Confirm</button>
             </div>
         </div>
-    </div>
 </body>
+
 </html>

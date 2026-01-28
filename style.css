@@ -58,6 +58,39 @@ textarea {
     box-sizing: border-box;
 }
 
+/* --- ACCESSIBLE SELECT OPTIONS --- */
+
+select {
+    font-size: 18px !important;
+    /* Slightly larger than standard 16px */
+    height: 50px;
+    padding: 0 15px !important;
+    cursor: pointer;
+    color: var(--text-primary);
+}
+
+/* This targets the actual list that drops down */
+select option {
+    font-size: 18px;
+    padding: 15px;
+    background: #fff;
+    color: #000;
+}
+
+/* Force height for the select box in Chrome/Safari */
+select {
+    line-height: 50px;
+    display: flex;
+    align-items: center;
+}
+
+/* --- THE "MOBILE FEEL" FIX --- */
+/* If you are on a laptop, this makes the whole form feel 'closer' */
+#feedback-overlay .card {
+    transform: scale(1.05);
+    transform-origin: top center;
+}
+
 .input-group {
     margin-bottom: 15px;
     position: relative;
@@ -444,4 +477,28 @@ button.btn-locked {
 .filter-btn.active {
     background: var(--primary);
     color: white;
+}
+
+/* --- STAR RATING --- */
+.star-rating {
+    display: flex;
+    gap: 5px;
+    margin: 10px 0 15px 0;
+}
+
+.star-icon {
+    font-size: 2rem;
+    color: #444;
+    /* Default inactive grey */
+    cursor: pointer;
+    transition: color 0.2s, transform 0.1s;
+}
+
+.star-icon.active {
+    color: var(--secondary);
+    /* Uses Neon Pink/Primary */
+}
+
+.star-icon:hover {
+    transform: scale(1.1);
 }

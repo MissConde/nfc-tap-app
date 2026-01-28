@@ -105,8 +105,9 @@ async function loadDancerView() {
             document.getElementById('stats-content').classList.remove('hidden');
             calculateAndDisplayStats();
 
-            // Auto-collapse history if unlocked
+            // Auto-collapse history if unlocked and show toggle button
             toggleHistory(true);
+            document.getElementById('toggle-history-btn').classList.remove('hidden');
         }
     } catch (e) {
         console.error("Failed to load view", e);
@@ -379,16 +380,16 @@ let currentFeedbackTemplate = [];
  */
 window.showFeedbackForm = async function () {
     // Show a small loading status in our master overlay
-    showStatus('success', 'Loading...', 'Fetching latest survey...', true);
-    
+    showStatus('', 'Loading...', 'Fetching survey...', true);
+
     try {
         // 1. Fetch the template from Google Sheets (FeedbackConfig tab)
         const resp = await fetch(`${WEB_APP_URL}?action=getFeedbackTemplate`);
         currentFeedbackTemplate = await resp.json();
-        
+
         // 2. Build the HTML questions
         renderDynamicFeedback(currentFeedbackTemplate);
-        
+
         // 3. Switch overlays
         document.getElementById('master-overlay').classList.add('hidden');
         document.getElementById('feedback-overlay').classList.remove('hidden');
@@ -412,9 +413,23 @@ function renderDynamicFeedback(template) {
             html += `<h4 class="form-category-header">${currentCategory}</h4>`;
         }
 
-        // 2. Build the question input as before
+        // 2. Build the question input
         let inputHtml = '';
-        if (q.type === 'select' || q.type === 'scale') {
+        if (q.type === 'scale') {
+            // Star Interaction Widget (with touch support)
+            inputHtml = `
+            <div class="star-rating" id="stars_${q.id}" 
+                 ontouchmove="handleStarTouch(event, '${q.id}')"
+                 onclick="handleStarTouch(event, '${q.id}')">
+                <span class="star-icon" data-val="1">★</span>
+                <span class="star-icon" data-val="2">★</span>
+                <span class="star-icon" data-val="3">★</span>
+                <span class="star-icon" data-val="4">★</span>
+                <span class="star-icon" data-val="5">★</span>
+            </div>
+            <input type="hidden" id="q_${q.id}" ${q.required ? 'required' : ''}>
+            `;
+        } else if (q.type === 'select') {
             inputHtml = `<select id="q_${q.id}" ${q.required ? 'required' : ''}>
                 <option value="" disabled selected>Select...</option>
                 ${q.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
@@ -436,12 +451,47 @@ function renderDynamicFeedback(template) {
 }
 
 /**
+ * Handle Star Interactions (Touch & Click)
+ */
+window.handleStarTouch = function (e, qId) {
+    // Determine the interaction point (Touch or Mouse)
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const container = document.getElementById(`stars_${qId}`);
+
+    // Get position relative to the star container
+    const rect = container.getBoundingClientRect();
+    const width = rect.width;
+    const x = clientX - rect.left;
+
+    // Calculate 1-5 rating based on width percentage
+    let rating = Math.ceil((x / width) * 5);
+    if (rating < 1) rating = 1;
+    if (rating > 5) rating = 5;
+
+    // 1. Set hidden input
+    const input = document.getElementById(`q_${qId}`);
+    if (input) input.value = rating;
+
+    // 2. Update visuals
+    const stars = container.querySelectorAll('.star-icon');
+    stars.forEach((star, index) => {
+        if (index < rating) {
+            star.classList.add('active');
+        } else {
+            star.classList.remove('active');
+        }
+    });
+
+    if (e.type === 'touchmove') e.preventDefault(); // Prevent scrolling while dragging
+};
+
+/**
  * Handles dynamic data collection and submission
  */
 document.getElementById('feedbackForm').onsubmit = async (e) => {
     e.preventDefault();
     const user = JSON.parse(localStorage.getItem('danceAppUser'));
-    
+
     const submitBtn = document.getElementById('feedbackSubmitBtn');
     submitBtn.innerText = "Saving...";
     submitBtn.disabled = true;
@@ -460,15 +510,15 @@ document.getElementById('feedbackForm').onsubmit = async (e) => {
     });
 
     try {
-        await fetch(WEB_APP_URL, { 
-            method: 'POST', 
-            mode: 'no-cors', 
-            body: JSON.stringify(answers) 
+        await fetch(WEB_APP_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify(answers)
         });
 
         localStorage.setItem('statsUnlocked', 'true');
         hideFeedback();
-        
+
         showStatus('success', 'Highlights Unlocked!', 'Enjoy your stats.');
         setTimeout(() => location.reload(), 2000);
     } catch (e) {

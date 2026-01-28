@@ -2,7 +2,7 @@
  * app.js - Optimized for Dance Tracker PWA 2026
  */
 
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwahPEYBvgGo_HSOtkRdiso3Yt4gwPjZ2i8ga7xFfM5pA-lESOXJgYCUCZs1ySU-SYS/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwK7jyCy4hIS4Rrn8zkldPsaneKYpvliMo7t_QjwGjdYCrOThEqimvgfFYj_f85m5IH/exec";
 const urlParams = new URLSearchParams(window.location.search);
 const idFromURL = urlParams.get('id');
 
@@ -369,6 +369,116 @@ document.getElementById('feedbackForm').onsubmit = async (e) => {
     }
 };
 
+/**
+ * Global variable to store the structure of the current feedback form
+ */
+let currentFeedbackTemplate = [];
+
+/**
+ * Triggered when user clicks "Unlock Now"
+ */
+window.showFeedbackForm = async function () {
+    // Show a small loading status in our master overlay
+    showStatus('success', 'Loading...', 'Fetching latest survey...', true);
+    
+    try {
+        // 1. Fetch the template from Google Sheets (FeedbackConfig tab)
+        const resp = await fetch(`${WEB_APP_URL}?action=getFeedbackTemplate`);
+        currentFeedbackTemplate = await resp.json();
+        
+        // 2. Build the HTML questions
+        renderDynamicFeedback(currentFeedbackTemplate);
+        
+        // 3. Switch overlays
+        document.getElementById('master-overlay').classList.add('hidden');
+        document.getElementById('feedback-overlay').classList.remove('hidden');
+    } catch (e) {
+        showStatus('error', 'Connection Error', 'Could not load feedback questions.');
+    }
+};
+
+/**
+ * Builds the HTML for the form based on the template
+ */
+function renderDynamicFeedback(template) {
+    const container = document.getElementById('dynamic-questions-container');
+    let html = '';
+    let currentCategory = '';
+
+    template.forEach(q => {
+        // 1. Check if we need to insert a Category Subheader
+        if (q.category && q.category !== currentCategory) {
+            currentCategory = q.category;
+            html += `<h4 class="form-category-header">${currentCategory}</h4>`;
+        }
+
+        // 2. Build the question input as before
+        let inputHtml = '';
+        if (q.type === 'select' || q.type === 'scale') {
+            inputHtml = `<select id="q_${q.id}" ${q.required ? 'required' : ''}>
+                <option value="" disabled selected>Select...</option>
+                ${q.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+            </select>`;
+        } else if (q.type === 'textarea') {
+            inputHtml = `<textarea id="q_${q.id}" rows="2" ${q.required ? 'required' : ''}></textarea>`;
+        } else {
+            inputHtml = `<input type="text" id="q_${q.id}" ${q.required ? 'required' : ''}>`;
+        }
+
+        html += `
+            <div class="input-group" style="margin-bottom: 20px;">
+                <label style="font-weight:bold; font-size: 0.85rem; color: var(--text-primary);">${q.label}</label>
+                ${inputHtml}
+            </div>`;
+    });
+
+    container.innerHTML = html;
+}
+
+/**
+ * Handles dynamic data collection and submission
+ */
+document.getElementById('feedbackForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const user = JSON.parse(localStorage.getItem('danceAppUser'));
+    
+    const submitBtn = document.getElementById('feedbackSubmitBtn');
+    submitBtn.innerText = "Saving...";
+    submitBtn.disabled = true;
+
+    // Dynamically collect all answers based on current template IDs
+    const answers = {
+        action: 'submitFeedback',
+        chipID: user.chipID
+    };
+
+    currentFeedbackTemplate.forEach(q => {
+        const element = document.getElementById(`q_${q.id}`);
+        if (element) {
+            answers[q.id] = element.value;
+        }
+    });
+
+    try {
+        await fetch(WEB_APP_URL, { 
+            method: 'POST', 
+            mode: 'no-cors', 
+            body: JSON.stringify(answers) 
+        });
+
+        localStorage.setItem('statsUnlocked', 'true');
+        hideFeedback();
+        
+        showStatus('success', 'Highlights Unlocked!', 'Enjoy your stats.');
+        setTimeout(() => location.reload(), 2000);
+    } catch (e) {
+        showStatus('error', 'Error', 'Failed to save feedback.');
+        submitBtn.innerText = "Submit & Unlock Highlights";
+        submitBtn.disabled = false;
+    }
+};
+
+
 /** --- UTILS --- **/
 
 function showView(viewId) {
@@ -405,4 +515,3 @@ window.unlinkChip = function () {
 
 /* Expose functions to window for HTML access */
 window.hideFeedback = function () { document.getElementById('feedback-overlay').classList.add('hidden'); }
-window.showFeedbackForm = function () { document.getElementById('feedback-overlay').classList.remove('hidden'); }

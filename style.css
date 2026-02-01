@@ -172,6 +172,11 @@ button.btn-locked {
 }
 
 /* Small variant for header buttons (e.g. Unlink) */
+.secondary-btn.btn-filled {
+    background: var(--secondary);
+    color: var(--text-primary);
+    border: 1.5px solid var(--secondary);
+}
 .secondary-btn.btn-sm {
     height: 32px;
     width: 95px;

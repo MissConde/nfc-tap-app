@@ -2,10 +2,9 @@
  * app.js - Optimized for Dance Tracker PWA 2026
  */
 
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwK7jyCy4hIS4Rrn8zkldPsaneKYpvliMo7t_QjwGjdYCrOThEqimvgfFYj_f85m5IH/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyVp8ZG3hg-uL4RSaA1_a7rBd8GUOp-Mhrd9LFH9-_3x910GZt9UoPllB8WnV5sPI2Y/exec";
 const urlParams = new URLSearchParams(window.location.search);
 const idFromURL = urlParams.get('id');
-
 let fullHistoryData = [];
 
 window.onload = async () => {
@@ -95,7 +94,7 @@ async function loadDancerView() {
         renderHistoryTable(fullHistoryData);
 
         // TODO: Future improvement - Check 'FeedbackGiven' column from backend instead of localStorage
-        const hasUnlocked = localStorage.getItem('statsUnlocked') === 'true';
+        const hasUnlocked = !!localStorage.getItem('lastFeedback');
         if (hasUnlocked) {
             const statsSection = document.getElementById('stats-section');
             statsSection.classList.remove('stats-locked');
@@ -227,17 +226,11 @@ function filterHistory(type) {
 
 /** --- STATS & REGISTRATION --- **/
 
-function calculateAndDisplayStats() {
-    const confirmed = fullHistoryData.filter(d => d.status === 'Confirmed');
-
-    // 1. Total Dances
-    document.getElementById('stat-total').innerText = confirmed.length;
+function calculateStats(data) {
+    const confirmed = data.filter(d => d.status === 'Confirmed');
 
     if (confirmed.length === 0) {
-        document.getElementById('stat-peak').innerText = "--";
-        document.getElementById('stat-unique').innerText = "0";
-        document.getElementById('stat-favorite').innerText = "--";
-        return;
+        return { total: 0, peak: "--", unique: 0, favorite: "--" };
     }
 
     // 2. Peak Hour (Day + Time)
@@ -250,27 +243,17 @@ function calculateAndDisplayStats() {
 
     const slotCounts = {};
     timeSlots.forEach(slot => { slotCounts[slot] = (slotCounts[slot] || 0) + 1; });
-
-    // Find peak slot
     const peakSlot = Object.keys(slotCounts).reduce((a, b) => slotCounts[a] > slotCounts[b] ? a : b);
-
-    // Format: "Mon 23" -> "Mon 23:00"
     const [pDay, pHour] = peakSlot.split(' ');
-    document.getElementById('stat-peak').innerText = `${pDay} ${pHour}:00`;
 
     // 3. Unique Partners & Favorite Partner
     const partnerCounts = {};
     const uniquePartners = new Set();
-
     confirmed.forEach(d => {
-        const p = d.partnerAlias;
-        uniquePartners.add(p);
-        partnerCounts[p] = (partnerCounts[p] || 0) + 1;
+        uniquePartners.add(d.partnerAlias);
+        partnerCounts[d.partnerAlias] = (partnerCounts[d.partnerAlias] || 0) + 1;
     });
 
-    document.getElementById('stat-unique').innerText = uniquePartners.size;
-
-    // Find Favorite
     let favorite = "";
     let maxCount = 0;
     for (const [partner, count] of Object.entries(partnerCounts)) {
@@ -279,8 +262,50 @@ function calculateAndDisplayStats() {
             favorite = partner;
         }
     }
-    document.getElementById('stat-favorite').innerText = favorite || "--";
+
+    return {
+        total: confirmed.length,
+        peak: `${pDay} ${pHour}:00`,
+        unique: uniquePartners.size,
+        favorite: favorite || "--"
+    };
 }
+
+function updateStatsUI(stats) {
+    document.getElementById('stat-total').innerText = stats.total;
+    document.getElementById('stat-peak').innerText = stats.peak;
+    document.getElementById('stat-unique').innerText = stats.unique;
+    document.getElementById('stat-favorite').innerText = stats.favorite;
+}
+
+function calculateAndDisplayStats() {
+    const updateBtn = document.getElementById('update-stats-container');
+
+    // 1. Check for Frozen Stats (Snapshot)
+    const frozen = localStorage.getItem('frozenStats');
+    if (frozen) {
+        updateStatsUI(JSON.parse(frozen));
+        if (updateBtn) {
+            updateBtn.classList.remove('hidden');
+            const p = updateBtn.querySelector('p');
+            if (p) p.innerText = "Stats are frozen at the time of feedback.";
+        }
+        return;
+    }
+
+    // 2. Fallback: Calculate Live
+    const stats = calculateStats(fullHistoryData);
+    updateStatsUI(stats);
+    if (updateBtn) {
+        updateBtn.classList.remove('hidden');
+        const p = updateBtn.querySelector('p');
+        if (p) p.innerText = "Viewing live stats. Submit feedback to save a snapshot.";
+    }
+}
+
+window.redoFeedback = function () {
+    showFeedbackForm();
+};
 
 async function checkUserInSystem(id) {
     try {
@@ -289,7 +314,11 @@ async function checkUserInSystem(id) {
         if (result.registered) {
             // Update local storage with backend data
             if (result.feedbackGiven) {
-                localStorage.setItem('statsUnlocked', 'true');
+                // We use existence of lastFeedback as the 'unlocked' flag.
+                // If it's missing (new device), set a marker so stats appear unlocked.
+                if (!localStorage.getItem('lastFeedback')) {
+                    localStorage.setItem('lastFeedback', JSON.stringify({ imported: true }));
+                }
             }
 
             localStorage.setItem('danceAppUser', JSON.stringify({
@@ -341,62 +370,14 @@ document.getElementById('regForm').onsubmit = async (e) => {
     }
 };
 
-document.getElementById('feedbackForm').onsubmit = async (e) => {
-    e.preventDefault();
-    const user = JSON.parse(localStorage.getItem('danceAppUser'));
-    const feedback = {
-        action: 'submitFeedback',
-        chipID: user.chipID,
-        vibe: document.getElementById('vibeRating').value,
-        music: document.getElementById('musicRating').value,
-        favPartner: document.getElementById('favPartner').value,
-        returnChance: document.getElementById('returnChance').value,
-        comments: document.getElementById('comments').value
-    };
-
-    try {
-        await fetch(WEB_APP_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(feedback) });
-
-        // Mark locally so we don't need a roundtrip immediately
-        localStorage.setItem('statsUnlocked', 'true');
-
-        hideFeedback();
-
-        // Show success and reload to reveal the new "Unlocked" UI
-        showStatus('success', 'Highlights Unlocked!', 'Enjoy your stats.');
-        setTimeout(() => location.reload(), 2000);
-    } catch (e) {
-        showStatus('error', 'Error', 'Feedback not saved. Try again.');
-    }
-};
+// (Legacy static form handler removed)
 
 /**
  * Global variable to store the structure of the current feedback form
  */
 let currentFeedbackTemplate = [];
 
-/**
- * Triggered when user clicks "Unlock Now"
- */
-window.showFeedbackForm = async function () {
-    // Show a small loading status in our master overlay
-    showStatus('', 'Loading...', 'Fetching survey...', true);
-
-    try {
-        // 1. Fetch the template from Google Sheets (FeedbackConfig tab)
-        const resp = await fetch(`${WEB_APP_URL}?action=getFeedbackTemplate`);
-        currentFeedbackTemplate = await resp.json();
-
-        // 2. Build the HTML questions
-        renderDynamicFeedback(currentFeedbackTemplate);
-
-        // 3. Switch overlays
-        document.getElementById('master-overlay').classList.add('hidden');
-        document.getElementById('feedback-overlay').classList.remove('hidden');
-    } catch (e) {
-        showStatus('error', 'Connection Error', 'Could not load feedback questions.');
-    }
-};
+// (Function moved to end of file to support pre-filling)
 
 /**
  * Builds the HTML for the form based on the template
@@ -427,7 +408,7 @@ function renderDynamicFeedback(template) {
                 <span class="star-icon" data-val="4">★</span>
                 <span class="star-icon" data-val="5">★</span>
             </div>
-            <input type="hidden" id="q_${q.id}" ${q.required ? 'required' : ''}>
+            <input type="hidden" id="q_${q.id}">
             `;
         } else if (q.type === 'select') {
             inputHtml = `<select id="q_${q.id}" ${q.required ? 'required' : ''}>
@@ -442,7 +423,9 @@ function renderDynamicFeedback(template) {
 
         html += `
             <div class="input-group" style="margin-bottom: 20px;">
-                <label style="font-weight:bold; font-size: 0.85rem; color: var(--text-primary);">${q.label}</label>
+                <label style="font-weight:bold; font-size: 0.85rem; color: var(--text-primary);">
+                    ${q.label} ${q.required ? '<span style="color:var(--error)">*</span>' : ''}
+                </label>
                 ${inputHtml}
             </div>`;
     });
@@ -502,12 +485,43 @@ document.getElementById('feedbackForm').onsubmit = async (e) => {
         chipID: user.chipID
     };
 
-    currentFeedbackTemplate.forEach(q => {
+    let firstMissing = null;
+
+    for (const q of currentFeedbackTemplate) {
         const element = document.getElementById(`q_${q.id}`);
         if (element) {
-            answers[q.id] = element.value;
+            const val = element.value;
+            // specific check for star ratings (which used hidden inputs)
+            if (q.required && !val) {
+                firstMissing = q;
+                break;
+            }
+            answers[q.id] = val;
         }
+    }
+
+    if (firstMissing) {
+        showStatus('error', 'Missing Info', `Please provide: ${firstMissing.label}`);
+        submitBtn.innerText = "Submit & Unlock Highlights";
+        submitBtn.disabled = false;
+        return;
+    }
+
+    // 4. Save "Frozen Stats" (Snapshot) to localStorage
+    const currentStats = calculateStats(fullHistoryData);
+    localStorage.setItem('frozenStats', JSON.stringify(currentStats));
+
+    // Check if this is an update (key exists) BEFORE checking validation failure or saving new ones
+    // But we need to do it before overwriting.
+    const isUpdate = !!localStorage.getItem('lastFeedback');
+
+    // 5. Save Answers for Pre-filling
+    const answersToSave = {};
+    currentFeedbackTemplate.forEach(q => {
+        const el = document.getElementById(`q_${q.id}`);
+        if (el) answersToSave[q.id] = el.value;
     });
+    localStorage.setItem('lastFeedback', JSON.stringify(answersToSave));
 
     try {
         await fetch(WEB_APP_URL, {
@@ -516,10 +530,13 @@ document.getElementById('feedbackForm').onsubmit = async (e) => {
             body: JSON.stringify(answers)
         });
 
-        localStorage.setItem('statsUnlocked', 'true');
         hideFeedback();
 
-        showStatus('success', 'Highlights Unlocked!', 'Enjoy your stats.');
+        if (isUpdate) {
+            showStatus('success', 'Stats Refreshed!', 'Your feedback has been updated.');
+        } else {
+            showStatus('success', 'Highlights Unlocked!', 'Enjoy your stats.');
+        }
         setTimeout(() => location.reload(), 2000);
     } catch (e) {
         showStatus('error', 'Error', 'Failed to save feedback.');
@@ -558,6 +575,8 @@ window.unlinkChip = function () {
     confirmAction("Unlink Chip?", "You will need to scan your chip again to log in.", "Unlink").then(choice => {
         if (choice) {
             localStorage.removeItem('danceAppUser');
+            localStorage.removeItem('frozenStats'); // Clear stats on unlink
+            localStorage.removeItem('lastFeedback'); // Clear feedback on unlink
             location.reload();
         }
     });
@@ -565,3 +584,52 @@ window.unlinkChip = function () {
 
 /* Expose functions to window for HTML access */
 window.hideFeedback = function () { document.getElementById('feedback-overlay').classList.add('hidden'); }
+
+/**
+ * Triggered when user clicks "Unlock Now" OR "Update Feedback"
+ */
+window.showFeedbackForm = async function () {
+    showStatus('', 'Loading...', 'Fetching survey...', true);
+
+    try {
+        if (currentFeedbackTemplate.length === 0) {
+            const resp = await fetch(`${WEB_APP_URL}?action=getFeedbackTemplate`);
+            currentFeedbackTemplate = await resp.json();
+        }
+
+        renderDynamicFeedback(currentFeedbackTemplate);
+
+        // --- PRE-FILL LOGIC ---
+        const lastData = JSON.parse(localStorage.getItem('lastFeedback'));
+        if (lastData) {
+            currentFeedbackTemplate.forEach(q => {
+                const val = lastData[q.id];
+                if (val) {
+                    const field = document.getElementById(`q_${q.id}`);
+                    if (field) field.value = val;
+                    // Update visuals for stars
+                    if (q.type === 'scale') {
+                        // We need to call the window function to update UI
+                        if (window.handleStarTouch) {
+                            // Simulate update
+                            const container = document.getElementById(`stars_${q.id}`);
+                            const stars = container.querySelectorAll('.star-icon');
+                            stars.forEach((star, index) => {
+                                if (index < val) star.classList.add('active');
+                            });
+                        }
+                    }
+                }
+            });
+
+            // Change button text to "Update"
+            const submitBtn = document.getElementById('feedbackSubmitBtn');
+            if (submitBtn) submitBtn.innerText = "Update & Refresh Stats";
+        }
+
+        document.getElementById('master-overlay').classList.add('hidden');
+        document.getElementById('feedback-overlay').classList.remove('hidden');
+    } catch (e) {
+        showStatus('error', 'Connection Error', 'Could not load feedback questions.');
+    }
+};

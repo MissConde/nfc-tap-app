@@ -66,7 +66,8 @@
             <div class="card" id="history-card">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                     <h3 style="margin:0;">My Dance History</h3>
-                    <button class="secondary-btn btn-sm" id="toggle-history-btn" onclick="toggleHistory()">Hide</button>
+                    <button class="secondary-btn btn-sm hidden" id="toggle-history-btn"
+                        onclick="toggleHistory()">Hide</button>
                 </div>
 
                 <div id="history-content">
@@ -121,45 +122,37 @@
                             <div class="stat-label">Favorite Partner</div>
                         </div>
                     </div>
+
+                    <!-- NEW UPDATE STATS SECTION -->
+                    <div id="update-stats-container" class="hidden" style="text-align: center; margin-top: 20px;">
+                        <p style="font-size: 0.8rem; color: #888; margin-bottom: 10px;">Stats are frozen at the time of
+                            feedback.</p>
+                        <button class="secondary-btn" onclick="redoFeedback()">
+                            Update Feedback & Refresh Stats
+                        </button>
+                    </div>
+
                 </div>
             </div>
         </div>
 
         <div id="feedback-overlay" class="error-overlay hidden">
-            <div class="card feedback-card">
-                <h3>Festival Feedback</h3>
+            <div class="card feedback-card"
+                style="background: white; width: 90%; max-width: 500px; padding: 25px; border-radius: 16px;">
+                <h3 style="color: var(--primary); margin-bottom: 5px;">Festival Feedback</h3>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 20px;">
+                    Unlock your stats by sharing your experience.
+                </p>
+
                 <form id="feedbackForm">
-                    <label>How was the vibe?</label>
-                    <select id="vibeRating" required>
-                        <option value="5">🔥 Amazing</option>
-                        <option value="4">😊 Good</option>
-                        <option value="3">😐 Okay</option>
-                        <option value="2">🥱 Boring</option>
-                    </select>
+                    <div id="dynamic-questions-container"></div>
 
-                    <label>How was the music?</label>
-                    <select id="musicRating" required>
-                        <option value="5">🎶 Loved it</option>
-                        <option value="4">👍 Good</option>
-                        <option value="3">🤷 Average</option>
-                        <option value="2">👎 Not my style</option>
-                    </select>
-
-                    <label>Favorite Partner (Alias)?</label>
-                    <input type="text" id="favPartner" placeholder="Who was your best dance?">
-
-                    <label>Will you come back next year?</label>
-                    <select id="returnChance" required>
-                        <option value="yes">Yes, absolutely!</option>
-                        <option value="maybe">Maybe</option>
-                        <option value="no">No</option>
-                    </select>
-
-                    <label>Any suggestions?</label>
-                    <textarea id="comments" rows="2" placeholder="Tell us what we can improve..."></textarea>
-
-                    <button type="submit" class="primary-btn">Submit & Unlock Highlights</button>
-                    <button type="button" class="secondary-btn" onclick="hideFeedback()">Cancel</button>
+                    <div style="margin-top: 25px;">
+                        <button type="submit" class="primary-btn" id="feedbackSubmitBtn">Submit & Unlock
+                            Highlights</button>
+                        <button type="button" class="secondary-btn" onclick="hideFeedback()"
+                            style="border:none; color: var(--text-secondary);">Maybe later</button>
+                    </div>
                 </form>
             </div>
         </div>

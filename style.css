@@ -58,6 +58,39 @@ textarea {
     box-sizing: border-box;
 }
 
+/* --- ACCESSIBLE SELECT OPTIONS --- */
+
+select {
+    font-size: 18px !important;
+    /* Slightly larger than standard 16px */
+    height: 50px;
+    padding: 0 15px !important;
+    cursor: pointer;
+    color: var(--text-primary);
+}
+
+/* This targets the actual list that drops down */
+select option {
+    font-size: 18px;
+    padding: 15px;
+    background: #fff;
+    color: #000;
+}
+
+/* Force height for the select box in Chrome/Safari */
+select {
+    line-height: 50px;
+    display: flex;
+    align-items: center;
+}
+
+/* --- THE "MOBILE FEEL" FIX --- */
+/* If you are on a laptop, this makes the whole form feel 'closer' */
+#feedback-overlay .card {
+    transform: scale(1.05);
+    transform-origin: top center;
+}
+
 .input-group {
     margin-bottom: 15px;
     position: relative;
@@ -79,6 +112,22 @@ input.is-invalid {
 input:invalid:not(:placeholder-shown)+.error-msg,
 input.is-invalid+.error-msg {
     display: block;
+}
+
+.form-category-header {
+    color: var(--primary);
+    border-bottom: 2px solid #eee;
+    padding-bottom: 5px;
+    margin: 30px 0 15px 0;
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: left;
+}
+
+/* Ensure the first header doesn't have too much top margin */
+.form-category-header:first-child {
+    margin-top: 10px;
 }
 
 /* --- BUTTONS --- */
@@ -123,6 +172,11 @@ button.btn-locked {
 }
 
 /* Small variant for header buttons (e.g. Unlink) */
+.secondary-btn.btn-filled {
+    background: var(--secondary);
+    color: var(--text-primary);
+    border: 1.5px solid var(--secondary);
+}
 .secondary-btn.btn-sm {
     height: 32px;
     width: 95px;
@@ -428,4 +482,28 @@ button.btn-locked {
 .filter-btn.active {
     background: var(--primary);
     color: white;
+}
+
+/* --- STAR RATING --- */
+.star-rating {
+    display: flex;
+    gap: 5px;
+    margin: 10px 0 15px 0;
+}
+
+.star-icon {
+    font-size: 2rem;
+    color: #444;
+    /* Default inactive grey */
+    cursor: pointer;
+    transition: color 0.2s, transform 0.1s;
+}
+
+.star-icon.active {
+    color: var(--secondary);
+    /* Uses Neon Pink/Primary */
+}
+
+.star-icon:hover {
+    transform: scale(1.1);
 }

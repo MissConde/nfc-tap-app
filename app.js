@@ -90,7 +90,7 @@ function confirmAction(title, msg, confirmText = "Confirm", cancelText = "Cancel
 
 async function loadDancerView() {
     // Show loading overlay
-    showStatus('loading', 'Loading Profile...', 'Fetching your dances...');
+    showStatus('loading', 'Loading Profile', 'Please wait...');
 
     const user = JSON.parse(localStorage.getItem('danceAppUser'));
     if (!user) return;

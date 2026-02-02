@@ -1,13 +1,30 @@
 /* --- VARIABLES & BASE --- */
 :root {
-    --primary: #6200ee;
-    --primary-variant: #3700b3;
-    --secondary: #03dac6;
-    --background: #f5f5f5;
-    --surface: #ffffff;
+    /* Brand Colors */
+    --primary: #FF0055;
+    /* Neon Pink */
+    --primary-variant: #80002B;
+    /* Deep Magenta */
+    --secondary: #38bdf8;
+    /* Neon Blue */
+
+    /* Layout Colors */
+    --background: #0f172a;
+    /* Deep Navy instead of Black */
+    --surface: #1e293b;
+    /* Lighter Navy for cards */
+    --border: #e0e0e0;
+    /* Standard dividers and borders */
+    --input-bg: #ffffff;
+    /* Form field backgrounds */
+
+    /* Text Colors */
+    --text-primary: #f8fafc;
+    --text-secondary: #999;
     --error: #b00020;
-    --text-primary: #000000;
-    --text-secondary: #757575;
+
+    /* Utility */
+    --overlay-bg: rgba(0, 0, 0, 0.4);
 }
 
 body {
@@ -56,6 +73,7 @@ textarea {
     border-radius: 8px;
     font-size: 16px;
     box-sizing: border-box;
+    color: #000000 !important; /* Force black text so it is readable */
 }
 
 /* --- ACCESSIBLE SELECT OPTIONS --- */
@@ -226,7 +244,7 @@ button.btn-locked {
 }
 
 #historyTable tr {
-    background: #ffffff;
+    background: var(--surface);
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
@@ -260,7 +278,7 @@ button.btn-locked {
     font-weight: 700;
     text-transform: uppercase;
     box-sizing: border-box;
-    border: 1.5px solid #ddd;
+    border: 1.5px solid var(--primary-variant);
 }
 
 .status-confirmed {
@@ -284,7 +302,7 @@ button.btn-locked {
 }
 
 .stat-card {
-    background: #ffffff;
+    background: var(--surface);
     padding: 15px;
     border-radius: 12px;
     text-align: center;
@@ -320,13 +338,12 @@ button.btn-locked {
 }
 
 .stats-locked {
-    background: linear-gradient(180deg, #ffffff 0%, #f9f9f9 100%);
-    border: 2px dashed #ccc;
+    background: linear-gradient(180deg, var(--surface) 0%, var(--primary-variant) 100%);
     text-align: center;
 }
 
 .stats-unlocked {
-    background: #fff;
+    background: var(--surface);
     border: 2px solid var(--primary);
     box-shadow: 0 0 15px rgba(98, 0, 238, 0.1);
     text-align: center;
@@ -353,7 +370,7 @@ button.btn-locked {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.4);
+    background: var(--background);
     backdrop-filter: blur(5px);
     display: flex;
     justify-content: center;
@@ -364,8 +381,6 @@ button.btn-locked {
 }
 
 #feedback-overlay {
-    background: var(--background);
-    /* Full white/gray background */
     opacity: 1;
     backdrop-filter: none;
     align-items: flex-start;
@@ -384,7 +399,7 @@ button.btn-locked {
 }
 
 .overlay-card {
-    background: #fff;
+    background: var(--surface);
     width: 100%;
     max-width: 320px;
     padding: 30px 20px;

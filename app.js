@@ -2,7 +2,7 @@
  * app.js - Optimized for Dance Tracker PWA 2026
  */
 
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyVp8ZG3hg-uL4RSaA1_a7rBd8GUOp-Mhrd9LFH9-_3x910GZt9UoPllB8WnV5sPI2Y/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxONbIxZABjvuoL7e4ZbwTTt1CuyYVY4_lio2L-v0kI8ngwjmPCLS7t3EI9xv7XCPu2/exec";
 const urlParams = new URLSearchParams(window.location.search);
 const idFromURL = urlParams.get('id');
 let fullHistoryData = [];
@@ -140,13 +140,19 @@ async function handleAutoLog(myID, partnerID) {
         const resp = await fetch(`${WEB_APP_URL}?action=logDance&scannerId=${myID}&targetId=${partnerID}`);
         const result = await resp.json();
 
-        if (result.status === "Confirmed") {
+        if (result.status === "Unregistered") {
+            showStatus('error', 'Unknown Chip', 'This chip is not linked to a dancer yet.');
+        } else if (result.status === "Confirmed") {
             showStatus('success', 'Dance Confirmed!', 'Double-tap handshake complete.');
             if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
         } else {
             showStatus('success', 'Dance Logged', 'Waiting for partner to scan back.');
         }
-        loadDancerView();
+
+        // Only reload view if it was a valid interaction (not unregistered)
+        if (result.status !== "Unregistered") {
+            loadDancerView();
+        }
     } catch (e) {
         showStatus('error', 'Tap Failed', 'Check your internet connection.');
     }
@@ -567,8 +573,18 @@ function validateFormState() {
     const form = document.getElementById('regForm');
     const submitBtn = document.getElementById('submitBtn');
     if (!form || !submitBtn) return;
+
+    // Check form validity (HTML5 constraints + Role selection)
     const isFormValid = form.checkValidity() && document.getElementById('role').value !== "";
+
     submitBtn.disabled = !isFormValid;
+
+    // Toggle visual class
+    if (isFormValid) {
+        submitBtn.classList.remove('btn-locked');
+    } else {
+        submitBtn.classList.add('btn-locked');
+    }
 }
 
 window.unlinkChip = function () {

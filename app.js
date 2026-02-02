@@ -2,7 +2,7 @@
  * app.js - Optimized for Dance Tracker PWA 2026
  */
 
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxONbIxZABjvuoL7e4ZbwTTt1CuyYVY4_lio2L-v0kI8ngwjmPCLS7t3EI9xv7XCPu2/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzot9vydKYUJgJbZ4q5Pl8q5zcwfJvSoeTMaKJwaSzhfljCCd0kL1yX25ISd_dETAgS/exec";
 const urlParams = new URLSearchParams(window.location.search);
 const idFromURL = urlParams.get('id');
 let fullHistoryData = [];
@@ -31,27 +31,32 @@ window.onload = async () => {
 
 /** --- MASTER UI CONTROLLER (OVERLAYS) --- **/
 
-function showStatus(type, title, msg, isPersistent = false) {
+function showStatus(type, title, msg, isModal = false) {
     const overlay = document.getElementById('master-overlay');
-    const successIcon = document.getElementById('icon-success');
-    const errorIcon = document.getElementById('icon-error');
     const actions = document.getElementById('overlay-actions');
+    const icons = {
+        success: document.getElementById('icon-success'),
+        error: document.getElementById('icon-error'),
+        loading: document.getElementById('icon-loading')
+    };
 
-    // Reset icons and actions
-    successIcon.classList.add('hidden');
-    errorIcon.classList.add('hidden');
-    actions.classList.add('hidden');
+    // Hide all icons first
+    Object.values(icons).forEach(el => el.classList.add('hidden'));
+
+    // Show relevant icon
+    if (icons[type]) icons[type].classList.remove('hidden');
 
     document.getElementById('overlay-title').innerText = title;
     document.getElementById('overlay-msg').innerText = msg;
 
-    if (type === 'success') successIcon.classList.remove('hidden');
-    if (type === 'error' || type === 'confirm') errorIcon.classList.remove('hidden');
-
+    actions.classList.add('hidden'); // Default hidden
     overlay.classList.remove('hidden');
 
-    if (!isPersistent) {
-        setTimeout(() => overlay.classList.add('hidden'), 2500);
+    // Auto-hide if not modal and not loading
+    if (!isModal && type !== 'loading') {
+        setTimeout(() => {
+            overlay.classList.add('hidden');
+        }, 2000);
     }
 }
 
@@ -84,12 +89,18 @@ function confirmAction(title, msg, confirmText = "Confirm", cancelText = "Cancel
 /** --- DATA LOADING & REFRESH --- **/
 
 async function loadDancerView() {
+    // Show loading overlay
+    showStatus('loading', 'Loading Profile...', 'Fetching your dances...');
+
     const user = JSON.parse(localStorage.getItem('danceAppUser'));
     if (!user) return;
 
     try {
         const resp = await fetch(`${WEB_APP_URL}?action=getHistory&id=${user.chipID}`);
         fullHistoryData = await resp.json();
+
+        // Hide overlay once done
+        document.getElementById('master-overlay').classList.add('hidden');
 
         document.getElementById('displayName').innerText = user.alias;
         renderHistoryTable(fullHistoryData);
@@ -446,6 +457,16 @@ function renderDynamicFeedback(template) {
     });
 
     container.innerHTML = html;
+
+    // Attach listeners for real-time validation
+    const inputs = container.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+        input.addEventListener('input', validateFeedbackForm);
+        input.addEventListener('change', validateFeedbackForm);
+    });
+
+    // Initial validation state
+    validateFeedbackForm();
 }
 
 /**
@@ -481,6 +502,8 @@ window.handleStarTouch = function (e, qId) {
     });
 
     if (e.type === 'touchmove') e.preventDefault(); // Prevent scrolling while dragging
+
+    validateFeedbackForm();
 };
 
 /**
@@ -574,9 +597,31 @@ function showView(viewId) {
 window.selectRole = function (roleValue) {
     document.getElementById('role').value = roleValue;
     document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('active'));
-    document.getElementById('btn-' + roleValue.toLowerCase()).classList.add('active');
     validateFormState();
 };
+
+function validateFeedbackForm() {
+    const submitBtn = document.getElementById('feedbackSubmitBtn');
+    if (!submitBtn) return;
+
+    let isValid = true;
+    for (const q of currentFeedbackTemplate) {
+        if (q.required) {
+            const el = document.getElementById(`q_${q.id}`);
+            if (!el || !el.value) {
+                isValid = false;
+                break;
+            }
+        }
+    }
+
+    submitBtn.disabled = !isValid;
+    if (isValid) {
+        submitBtn.classList.remove('btn-locked');
+    } else {
+        submitBtn.classList.add('btn-locked');
+    }
+}
 
 function validateFormState() {
     const form = document.getElementById('regForm');
@@ -614,13 +659,16 @@ window.hideFeedback = function () { document.getElementById('feedback-overlay').
  * Triggered when user clicks "Unlock Now" OR "Update Feedback"
  */
 window.showFeedbackForm = async function () {
-    showStatus('', 'Loading...', 'Fetching survey...', true);
+    showStatus('loading', 'Loading Survey', 'Please wait...');
 
     try {
         if (currentFeedbackTemplate.length === 0) {
             const resp = await fetch(`${WEB_APP_URL}?action=getFeedbackTemplate`);
             currentFeedbackTemplate = await resp.json();
         }
+
+        // Hide loading overlay
+        document.getElementById('master-overlay').classList.add('hidden');
 
         renderDynamicFeedback(currentFeedbackTemplate);
 

@@ -1,13 +1,30 @@
 /* --- VARIABLES & BASE --- */
 :root {
-    --primary: #6200ee;
-    --primary-variant: #3700b3;
-    --secondary: #03dac6;
-    --background: #f5f5f5;
-    --surface: #ffffff;
+    /* Brand Colors */
+    --primary: #FF0055;
+    /* Neon Pink */
+    --primary-variant: #80002B;
+    /* Deep Magenta */
+    --secondary: #38bdf8;
+    /* Neon Blue */
+
+    /* Layout Colors */
+    --background: #0f172a;
+    /* Deep Navy instead of Black */
+    --surface: #1e293b;
+    /* Lighter Navy for cards */
+    --border: #e0e0e0;
+    /* Standard dividers and borders */
+    --input-bg: #ffffff;
+    /* Form field backgrounds */
+
+    /* Text Colors */
+    --text-primary: #f8fafc;
+    --text-secondary: #999;
     --error: #b00020;
-    --text-primary: #000000;
-    --text-secondary: #757575;
+
+    /* Utility */
+    --overlay-bg: rgba(0, 0, 0, 0.4);
 }
 
 body {
@@ -56,6 +73,7 @@ textarea {
     border-radius: 8px;
     font-size: 16px;
     box-sizing: border-box;
+    color: #000000 !important; /* Force black text so it is readable */
 }
 
 /* --- ACCESSIBLE SELECT OPTIONS --- */
@@ -226,7 +244,7 @@ button.btn-locked {
 }
 
 #historyTable tr {
-    background: #ffffff;
+    background: var(--surface);
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
@@ -260,13 +278,12 @@ button.btn-locked {
     font-weight: 700;
     text-transform: uppercase;
     box-sizing: border-box;
-    border: 1.5px solid #ddd;
+    border: 1.5px solid var(--primary-variant);
 }
 
 .status-confirmed {
     border-color: #4CAF50;
     color: #2E7D32;
-    background: #f1f8f1;
 }
 
 .status-waiting {
@@ -284,49 +301,50 @@ button.btn-locked {
 }
 
 .stat-card {
-    background: #ffffff;
-    padding: 15px;
+    background: var(--surface); /* Lighter Navy */
+    padding: 18px 10px;        /* Taller padding for a better mobile look */
     border-radius: 12px;
     text-align: center;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-    border: 1px solid #eee;
-    transition: transform 0.2s;
-}
-
-.stat-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 15px rgba(98, 0, 238, 0.15);
+    
+    /* Simplified Border: Single color instead of a complex gradient */
+    border: 1.5px solid var(--secondary); /* The Neon Blue border */
+    
+    /* Clean Neon Glow: Makes the cards stand out on a dark background */
+    box-shadow: 0 4px 15px rgba(56, 189, 248, 0.2); 
+    
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
 }
 
 .stat-emoji {
-    font-size: 2rem;
-    margin-bottom: 8px;
-    display: block;
+    font-size: 1.8rem;
+    margin-bottom: 5px;
 }
 
 .stat-value {
-    font-size: 1.4rem;
+    font-size: 1.5rem;
     font-weight: 800;
-    color: var(--primary);
-    margin-bottom: 4px;
-    line-height: 1.2;
+    color: #ffffff; /* Pure white for maximum contrast on mobile */
+    margin-bottom: 2px;
 }
 
 .stat-label {
     font-size: 0.7rem;
     color: var(--text-secondary);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
+    font-weight: 600;
 }
 
 .stats-locked {
-    background: linear-gradient(180deg, #ffffff 0%, #f9f9f9 100%);
-    border: 2px dashed #ccc;
+    background: linear-gradient(180deg, var(--surface) 0%, var(--primary-variant) 100%);
     text-align: center;
 }
 
 .stats-unlocked {
-    background: #fff;
+    background: var(--surface);
     border: 2px solid var(--primary);
     box-shadow: 0 0 15px rgba(98, 0, 238, 0.1);
     text-align: center;
@@ -353,7 +371,7 @@ button.btn-locked {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.4);
+    background: var(--background);
     backdrop-filter: blur(5px);
     display: flex;
     justify-content: center;
@@ -364,8 +382,6 @@ button.btn-locked {
 }
 
 #feedback-overlay {
-    background: var(--background);
-    /* Full white/gray background */
     opacity: 1;
     backdrop-filter: none;
     align-items: flex-start;
@@ -384,7 +400,7 @@ button.btn-locked {
 }
 
 .overlay-card {
-    background: #fff;
+    background: var(--surface);
     width: 100%;
     max-width: 320px;
     padding: 30px 20px;

@@ -55,7 +55,7 @@ function showStatus(type, title, msg, isPersistent = false) {
     }
 }
 
-function confirmAction(title, msg, confirmText = "Confirm") {
+function confirmAction(title, msg, confirmText = "Confirm", cancelText = "Cancel") {
     return new Promise((resolve) => {
         const overlay = document.getElementById('master-overlay');
         const actions = document.getElementById('overlay-actions');
@@ -66,6 +66,7 @@ function confirmAction(title, msg, confirmText = "Confirm") {
         actions.classList.remove('hidden');
 
         primaryBtn.innerText = confirmText;
+        secondaryBtn.innerText = cancelText;
         primaryBtn.className = (confirmText === "Delete") ? "primary-btn-full btn-danger" : "primary-btn-full";
 
         const cleanup = (choice) => {
@@ -318,19 +319,27 @@ async function checkUserInSystem(id) {
         const resp = await fetch(`${WEB_APP_URL}?action=check&id=${id}`);
         const result = await resp.json();
         if (result.registered) {
-            // Update local storage with backend data
-            if (result.feedbackGiven) {
-                // We use existence of lastFeedback as the 'unlocked' flag.
-                // If it's missing (new device), set a marker so stats appear unlocked.
-                if (!localStorage.getItem('lastFeedback')) {
-                    localStorage.setItem('lastFeedback', JSON.stringify({ imported: true }));
-                }
-            }
+            // Ask for confirmation before logging in automatically
+            confirmAction(`Welcome back!`, `Log in as ${result.alias}?`, "Yes, Login", "Oops, not me").then(shouldLogin => {
+                if (shouldLogin) {
+                    // Update local storage with backend data
+                    if (result.feedbackGiven) {
+                        // We use existence of lastFeedback as the 'unlocked' flag.
+                        // If it's missing (new device), set a marker so stats appear unlocked.
+                        if (!localStorage.getItem('lastFeedback')) {
+                            localStorage.setItem('lastFeedback', JSON.stringify({ imported: true }));
+                        }
+                    }
 
-            localStorage.setItem('danceAppUser', JSON.stringify({
-                chipID: id, alias: result.alias, role: result.role, userKey: result.storedKey
-            }));
-            location.reload();
+                    localStorage.setItem('danceAppUser', JSON.stringify({
+                        chipID: id, alias: result.alias, role: result.role, userKey: result.storedKey
+                    }));
+                    location.reload();
+                } else {
+                    // User denied, maybe show scan status again
+                    showStatus('error', 'Login Cancelled', 'Tap another chip or try again.');
+                }
+            });
         } else {
             showView('registration-view');
         }

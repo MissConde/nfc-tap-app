@@ -11,10 +11,45 @@
 
 <body>
 
+    <!-- LOADING OVERLAYS -->
+
+    <div id="admin-loading-overlay" class="master-overlay hidden" style="background: rgba(255,255,255,0.9);">
+        <div class="loader-container">
+            <div class="spinner" style="border-top-color: var(--primary); border-left-color: var(--primary);"></div>
+            <p style="color:#333; margin-top:20px; font-weight:bold;">Updating Dashboard...</p>
+        </div>
+    </div>
+
+    <!-- ADMIN LOGIN OVERLAY -->
+    <div id="admin-login-overlay" class="master-overlay hidden"
+        style="backdrop-filter: blur(10px); background: rgba(15, 23, 42, 0.8);">
+        <div class="overlay-card"
+            style="max-width:300px; background:var(--surface); border:1px solid var(--primary-variant);">
+            <div style="font-size:3rem; margin-bottom:10px;">🔐</div>
+            <h3 style="color:white; margin-bottom:20px;">Organizer Access</h3>
+
+            <input type="password" id="admin-pin-input" placeholder="Enter PIN"
+                style="text-align:center; font-size:1.5rem; letter-spacing:5px; margin-bottom:20px; background:white;"
+                inputmode="numeric">
+
+            <div style="display:flex; gap:10px;">
+                <button id="admin-cancel-btn" class="secondary-btn-full" onclick="closeAdminLogin()">Cancel</button>
+                <button id="admin-confirm-btn" class="primary-btn-full" onclick="submitAdminPin()">Unlock</button>
+            </div>
+
+            <p id="admin-login-error" class="error-msg" style="text-align:center; margin-top:10px;">Incorrect PIN</p>
+        </div>
+    </div>
+
     <div class="container">
         <div id="scan-view" class="card">
             <h2>Welcome</h2>
             <p id="scan-status">Please tap your NFC chip to begin.</p>
+            <div style="margin-top: 30px; text-align: center;">
+                <a href="#" onclick="accessAdmin()"
+                    style="color: var(--text-secondary); font-size: 0.75rem; text-decoration: none;">🔑 Organizer
+                    Access</a>
+            </div>
         </div>
         <div id="registration-view" class="card hidden">
             <h2>Dancer Profile</h2>
@@ -158,8 +193,7 @@
         </div>
 
         <div id="feedback-overlay" class="error-overlay hidden">
-            <div class="card feedback-card"
-                style="width: 90%; max-width: 500px; padding: 25px; border-radius: 16px;">
+            <div class="card feedback-card" style="width: 90%; max-width: 500px; padding: 25px; border-radius: 16px;">
                 <h3 style="color: var(--primary); margin-bottom: 5px;">Festival Feedback</h3>
                 <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 20px;">
                     Unlock your stats by sharing your experience.
@@ -179,69 +213,170 @@
         </div>
 
         <div id="organizer-view" class="hidden">
-            <div class="card" style="border-left: 4px solid var(--error);">
-                <h3>Organizer Dashboard</h3>
-                <p>Private Directory (Real Names)</p>
-                <div id="admin-stats">
-                    <button onclick="alert('Exporting PDF...')">Download Attendance</button>
-                </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin:0;">Organizer Dashboard</h2>
+                <button class="secondary-btn btn-sm" onclick="location.reload()"
+                    style="width: auto; padding: 5px 10px;">LOG OUT</button>
             </div>
-        </div>
-        <!-- <div id="success-overlay" class="success-overlay hidden">
-            <div class="success-content">
-                <div class="checkmark-circle">
-                    <div class="checkmark draw"></div>
-                </div>
-                <h3>Chip Linked!</h3>
-                <p>Welcome to the floor.</p>
+
+            <!-- TAB NAVIGATION -->
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchAdminTab('pulse')">📊 Live Pulse</button>
+                <button class="tab-btn" onclick="switchAdminTab('feedback')">⭐ Feedback</button>
+                <button class="tab-btn" onclick="switchAdminTab('tools')">🛠 Tools</button>
             </div>
-        </div>
-        <div id="error-overlay" class="error-overlay hidden">
-            <div class="error-content">
-                <div class="error-icon">!</div>
-                <h3>Something went wrong</h3>
-                <p id="error-message">Check your connection and try again.</p>
-                <button type="button" class="secondary-btn" onclick="hideErrorOverlay()">Try Again</button>
-            </div>
-        </div>
-    </div> -->
-        <!-- <div id="confirm-modal" class="error-overlay hidden">
-        <div class="card feedback-card" style="text-align: center;">
-            <h3 style="color: var(--text-primary);">Delete Log?</h3>
-            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 20px;">
-                This will remove the pending dance from your history.
-            </p>
-            <div style="display: flex; gap: 10px;">
-                <button id="modal-cancel-btn" class="secondary-btn" style="width: 100%; height: 45px;">Back</button>
-                <button id="modal-confirm-btn" class="primary-btn" style="width: 100%; height: 45px; background: var(--error);">Delete</button>
-            </div>
-        </div>
-    </div> -->
-        <div id="master-overlay" class="overlay hidden">
-            <div class="overlay-card">
-                <div id="overlay-icon-container">
-                    <div id="icon-success" class="hidden">
-                        <div class="checkmark-circle">
-                            <div class="checkmark"></div>
+
+            <button class="accordion-header active" onclick="toggleAdminAccordion('pulse')">
+                <span>📊 Live Pulse</span>
+                <span>▼</span>
+            </button>
+
+            <div id="tab-pulse" class="admin-tab-content active">
+                <div class="admin-grid admin-grid-3">
+                    <div class="card stat-summary-card">
+                        <h3>👥 Registered Users</h3>
+                        <div class="card-content-center">
+                            <div class="stat-value" id="pulse-count">--</div>
                         </div>
                     </div>
-                    <div id="icon-error" class="hidden">
-                        <div class="error-icon">!</div>
+
+                    <div class="card role-balance-card">
+                        <h3>⚖️ Role Balance</h3>
+                        <div class="card-content-center">
+                            <div class="balance-item" style="width:100%;">
+                                <span class="label lead">Leaders</span>
+                                <span id="role-lead-pct" class="pct">--%</span>
+                            </div>
+                            <div class="progress-container" style="width:100%;">
+                                <div id="balance-bar" class="progress-fill"></div>
+                            </div>
+                            <div class="balance-item" style="width:100%;">
+                                <span class="label follow">Followers</span>
+                                <span id="role-follow-pct" class="pct">--%</span>
+                            </div>
+                        </div>
                     </div>
-                    <div id="icon-loading" class="hidden">
-                        <div class="spinner"></div>
+
+                    <div class="card stat-summary-card">
+                        <h3>✅ Feedback Completed</h3>
+                        <div class="card-content-center">
+                            <div class="stat-value" id="feedback-count">--</div>
+                        </div>
                     </div>
                 </div>
 
-                <h3 id="overlay-title">Title</h3>
-                <p id="overlay-msg">Message goes here.</p>
+                <div class="admin-grid">
+                    <div class="card scrollable-admin-card">
+                        <div class="card-header">
+                            <h3>🔥 Live Feed</h3>
+                        </div>
+                        <div class="scroll-area">
+                            <ul id="live-feed-list" class="admin-list">
+                                <li>Waiting...</li>
+                            </ul>
+                        </div>
+                    </div>
 
-                <div id="overlay-actions" class="hidden">
-                    <button id="overlay-secondary-btn" class="secondary-btn-full">Cancel</button>
-                    <button id="overlay-primary-btn" class="primary-btn-full">Confirm</button>
+                    <div class="card scrollable-admin-card">
+                        <div class="card-header">
+                            <h3>🏆 Top Dancers</h3>
+                        </div>
+                        <div class="scroll-area">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th style="text-align:left;">Alias</th>
+                                        <th style="text-align:left;">Role</th>
+                                        <th style="text-align:right;">#</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="top-dancers-list">
+                                    <tr>
+                                        <td colspan="3" class="loading">Loading...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 2: FEEDBACK -->
+            <button class="accordion-header" onclick="toggleAdminAccordion('feedback')">
+                <span>⭐ Feedback</span>
+                <span>▼</span>
+            </button>
+            <div id="tab-feedback" class="admin-tab-content hidden">
+                <div id="tab-feedback" class="admin-tab-content hidden">
+                    <div class="card" style="margin-bottom: 20px;">
+                        <h3>⭐ Vibe & Sentiment</h3>
+                        <p style="color:#666; font-style:italic;">Detailed feedback analysis and sentiment graphs coming
+                            soon...</p>
+                        <div style="margin-top:20px; text-align:center;">
+                            <div style="font-size:3rem; font-weight:bold; color:var(--primary);"
+                                id="feedback-vibe-score">--</div>
+                            <span>Average Vibe Score</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 3: TOOLS -->
+            <button class="accordion-header" onclick="toggleAdminAccordion('tools')">
+                <span>🛠 Tools</span>
+                <span>▼</span>
+            </button>
+            <div id="tab-tools" class="admin-tab-content hidden">
+                <div class="card">
+                    <h3>🛠 Management Tools</h3>
+
+                    <!-- Dancer Lookup -->
+                    <div style="margin-bottom: 20px;">
+                        <label style="font-size:0.85rem; font-weight:bold; color:#444;">Dancer Lookup</label>
+                        <div style="display:flex; gap:10px; margin-top:5px;">
+                            <input type="text" id="admin-search-input" placeholder="Enter Alias..."
+                                style="margin:0; padding:10px;">
+                            <button class="primary-btn" onclick="adminSearchDancer()"
+                                style="width:auto; padding:0 20px;">🔎</button>
+                        </div>
+                        <div id="admin-search-result" class="hidden"
+                            style="margin-top:10px; padding:10px; background:#f0f9ff; border-radius:8px; border:1px solid #bae6fd;">
+                        </div>
+                    </div>
+
+                    <!-- Log Out -->
+                    <div style="margin-top:20px; text-align:center; border-top:1px solid #eee; padding-top:20px;">
+                        <button class="secondary-btn" onclick="location.reload()">Log Out</button>
+                    </div>
                 </div>
             </div>
         </div>
+    </div>
+    <div id="master-overlay" class="overlay hidden">
+        <div class="overlay-card">
+            <div id="overlay-icon-container">
+                <div id="icon-success" class="hidden">
+                    <div class="checkmark-circle">
+                        <div class="checkmark"></div>
+                    </div>
+                </div>
+                <div id="icon-error" class="hidden">
+                    <div class="error-icon">!</div>
+                </div>
+                <div id="icon-loading" class="hidden">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+
+            <h3 id="overlay-title">Title</h3>
+            <p id="overlay-msg">Message goes here.</p>
+
+            <div id="overlay-actions" class="hidden">
+                <button id="overlay-secondary-btn" class="secondary-btn-full">Cancel</button>
+                <button id="overlay-primary-btn" class="primary-btn-full">Confirm</button>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>

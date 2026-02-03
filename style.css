@@ -41,10 +41,54 @@ body {
     width: 100%;
     max-width: 500px;
     padding: 20px;
+    /* Added padding to prevent edge-touching */
+    box-sizing: border-box;
+    /* Ensure padding doesn't overflow width */
 }
 
+/* --- UTILITIES --- */
 .hidden {
     display: none !important;
+}
+
+/* --- OVERLAYS --- */
+.master-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 2000;
+    /* High Z-Index */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(5px);
+}
+
+.loader-container {
+    text-align: center;
+}
+
+.spinner {
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top: 4px solid #fff;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* --- CARDS & TYPOGRAPHY --- */
@@ -330,9 +374,9 @@ button.btn-locked {
 .stat-value {
     font-size: 1.5rem;
     font-weight: 800;
-    color: #ffffff;
-    /* Pure white for maximum contrast on mobile */
-    margin-bottom: 2px;
+    color: var(--text-secondary)
+        /* Pure white for maximum contrast on mobile */
+        margin-bottom: 2px;
 }
 
 .stat-label {
@@ -550,4 +594,309 @@ button.btn-locked {
     100% {
         transform: rotate(360deg);
     }
+}
+
+/* --- ORGANIZER VIEW (LIGHT MODE) --- */
+#organizer-view {
+    /* Force Light Theme overrides */
+    --surface: #ffffff;
+    --background: #f3f4f6;
+    --text-primary: #111827;
+    --text-secondary: #4b5563;
+    --border: #d1d5db;
+
+    background-color: var(--background);
+    color: var(--text-primary);
+
+    /* Ensure it covers the dark body */
+    min-height: 100vh;
+    width: 100vw;
+    position: fixed;
+    top: 0;
+    left: 0;
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    z-index: 500;
+}
+
+#organizer-view .card {
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+#organizer-view h2,
+#organizer-view h3 {
+    color: #111;
+}
+
+/* Light Mode Utility for Stat Cards */
+#organizer-view .bg-light {
+    background-color: #f9f9f9;
+}
+
+/* --- ADMIN TABS --- */
+/* --- ADMIN TABS & ACCORDION --- */
+/* Desktop Tabs Container */
+.tabs {
+    display: none;
+    /* Hidden by default (Mobile) */
+    gap: 15px;
+    margin-bottom: 25px;
+    padding: 5px;
+    background: #f0f0f0;
+    border-radius: 12px;
+}
+
+/* Tab Buttons (Desktop) */
+.tab-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    font-size: 0.95rem;
+    color: #666;
+    padding: 10px 15px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    font-weight: 500;
+}
+
+.tab-btn.active {
+    background: white;
+    color: var(--primary);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    font-weight: bold;
+    transform: scale(1.02);
+}
+
+.tab-btn:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.5);
+    color: #333;
+}
+
+/* Mobile Accordion Headers */
+.accordion-header {
+    display: flex;
+    /* Visible by default (Mobile) */
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    background: white;
+    padding: 15px 20px;
+    margin-bottom: 10px;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: bold;
+    color: #333;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    /* transition: all 0.2s; */
+}
+
+.accordion-header.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    /* margin-bottom: 0;
+    /* Attach to content */
+    /*border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0; */
+}
+
+/* Adjust Content for Accordion */
+.admin-tab-content {
+    /* Mobile: when active, it sits under the header */
+}
+
+/* --- ADMIN GRID SYSTEM --- */
+.admin-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    /* Default: 1 column (Phone) */
+    gap: 15px;
+    /* Reduced gap */
+    margin-bottom: 15px;
+    /* Reduced margin */
+}
+
+/* Tablet & Desktop Layout */
+@media (min-width: 768px) {
+    .admin-grid {
+        grid-template-columns: 1fr 1fr;
+        /* Default: 2 columns (Row 2) */
+    }
+
+    .admin-grid-3 {
+        grid-template-columns: 1fr 1fr 1fr;
+        /* Specific: 3 columns (Row 1) */
+    }
+
+    .tabs {
+        display: flex;
+        /* Show Tabs */
+    }
+
+    .accordion-header {
+        display: none;
+        /* Hide Accordion Headers */
+    }
+}
+
+/* --- ADMIN CARD STYLING --- */
+/* Standardize Header Spacing */
+#organizer-view .card h3 {
+    margin-top: 0;
+    margin-bottom: 0;
+    font-size: 0.95rem;
+    /* Slightly smaller font */
+    text-align: center;
+    width: 100%;
+    flex-shrink: 0;
+}
+
+/* Specific Override for Left-Aligned Headers in Row 2 if needed */
+.scrollable-admin-card h3 {
+    text-align: left;
+}
+
+/* Content Centering Wrapper */
+.card-content-center {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+.stat-summary-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    min-height: 110px;
+    /* Condensed Height */
+    padding: 15px !important;
+    /* Reduced Padding */
+    gap: 10px;
+    /* Reduced Gap */
+}
+
+.role-balance-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    min-height: 110px;
+    /* Condensed Height */
+    padding: 15px !important;
+    /* Reduced Padding */
+    gap: 10px;
+    /* Reduced Gap */
+}
+
+.balance-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.balance-item .lead {
+    color: var(--primary);
+}
+
+.balance-item .follow {
+    color: var(--secondary);
+}
+
+.progress-container {
+    width: 100%;
+    height: 12px;
+    background: #eee;
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 10px 0;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--primary);
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* --- SCROLLABLE CARDS --- */
+.scrollable-admin-card {
+    /* Responsive Height: Fills remaining space on desktop */
+    height: 400px;
+    /* Fallback / Mobile default */
+    display: flex;
+    flex-direction: column;
+}
+
+@media (min-width: 768px) {
+    .scrollable-admin-card {
+        /* Caluclated to fit typical laptop screen without main scrollbar */
+        height: calc(100vh - 450px);
+        min-height: 250px;
+    }
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.scroll-area {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+/* Custom Scrollbar for Admin View */
+.scroll-area::-webkit-scrollbar {
+    width: 5px;
+}
+
+.scroll-area::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 10px;
+}
+
+/* Admin List & Table */
+.admin-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.admin-list li {
+    padding: 12px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 0.9rem;
+    color: #444;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.admin-table th {
+    position: sticky;
+    top: 0;
+    background: white;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.admin-table td {
+    padding: 12px 0;
+    border-bottom: 1px solid #eee;
+    color: #333;
 }

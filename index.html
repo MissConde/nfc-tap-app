@@ -12,12 +12,6 @@
 <body>
 
     <!-- LOADING OVERLAYS -->
-    <div id="master-overlay" class="master-overlay hidden">
-        <div class="loader-container">
-            <div class="spinner"></div>
-            <p id="overlay-text" style="color:white; margin-top:20px;">Connecting...</p>
-        </div>
-    </div>
 
     <div id="admin-loading-overlay" class="master-overlay hidden" style="background: rgba(255,255,255,0.9);">
         <div class="loader-container">
@@ -39,10 +33,10 @@
                 inputmode="numeric">
 
             <div style="display:flex; gap:10px;">
-                <button id="overlay-secondary-btn" class="secondary-btn-full" onclick="closeAdminLogin()">Cancel</button>
-                <button id="overlay-primary-btn" class="primary-btn-full" onclick="submitAdminPin()">Unlock</button>
+                <button id="admin-cancel-btn" class="secondary-btn-full" onclick="closeAdminLogin()">Cancel</button>
+                <button id="admin-confirm-btn" class="primary-btn-full" onclick="submitAdminPin()">Unlock</button>
             </div>
-            
+
             <p id="admin-login-error" class="error-msg" style="text-align:center; margin-top:10px;">Incorrect PIN</p>
         </div>
     </div>

@@ -2,7 +2,7 @@
  * app.js - Optimized for Dance Tracker PWA 2026
  */
 
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz1mHvbX3jRqt2FqDPM68iae-QidMlGePK3oT9l4BVNXgpXA0bfx7eccjgL9njzXzsG/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby5wet3I48Q1zmUxWo5eHFAycw6wbwGYggHuk3_2IRMaBM1q2ePr78ayQxdVCwjM7p1/exec";
 const urlParams = new URLSearchParams(window.location.search);
 const idFromURL = urlParams.get('id');
 let fullHistoryData = [];

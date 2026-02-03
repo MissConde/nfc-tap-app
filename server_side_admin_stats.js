@@ -293,18 +293,10 @@ function handleGetAdminStats(e) {
         feedCount++;
       }
     } else {
-      // Count Pending for density too? Yes.
+      // Count Pending for density? Yes.
       if (time > oneHourAgo) dancesOnDensity++;
 
-      // If Feed is empty, maybe show pending too? 
-      if (feedCount < 5 && status === "Pending") {
-        const name1 = aliasMap[scanner] || "Unknown";
-        recentDances.push({
-          time: Utilities.formatDate(time, Session.getScriptTimeZone(), "HH:mm"),
-          pair: `${name1} tapped...`
-        });
-        feedCount++;
-      }
+      // REMOVED: Do not show Pending dances in the feed
     }
   }
 

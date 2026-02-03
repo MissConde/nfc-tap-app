@@ -716,7 +716,21 @@ window.showFeedbackForm = async function () {
  * PIN: 2026 (Simple Hash Verification)
  */
 window.accessAdmin = function () {
-    const pin = prompt("Enter Organizer PIN:");
+    // Show new custom overlay instead of prompt
+    document.getElementById('admin-login-error').style.display = 'none';
+    document.getElementById('admin-pin-input').value = '';
+    document.getElementById('admin-login-overlay').classList.remove('hidden');
+    document.getElementById('admin-pin-input').focus();
+};
+
+window.closeAdminLogin = function () {
+    document.getElementById('admin-login-overlay').classList.add('hidden');
+};
+
+window.submitAdminPin = function () {
+    const input = document.getElementById('admin-pin-input');
+    const pin = input.value;
+
     if (!pin) return;
 
     // Simple Jenkins-like hash for client-side obfuscation
@@ -724,13 +738,16 @@ window.accessAdmin = function () {
 
     // Hash for "2026" is 1537282 (Corrected)
     if (hashCode(pin) === 1537282) {
+        closeAdminLogin(); // Close overlay
         showStatus('success', 'Access Granted', 'Welcome to Admin Mode');
         setTimeout(() => {
             showView('organizer-view');
             fetchAdminStats(); // Load data immediately
-        }, 1200);
+        }, 500);
     } else {
-        showStatus('error', 'Access Denied', 'Incorrect PIN');
+        document.getElementById('admin-login-error').style.display = 'block';
+        input.value = '';
+        input.focus();
     }
 };
 

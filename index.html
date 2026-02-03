@@ -26,11 +26,32 @@
         </div>
     </div>
 
+    <!-- ADMIN LOGIN OVERLAY -->
+    <div id="admin-login-overlay" class="master-overlay hidden"
+        style="backdrop-filter: blur(10px); background: rgba(15, 23, 42, 0.8);">
+        <div class="overlay-card"
+            style="max-width:300px; background:var(--surface); border:1px solid var(--primary-variant);">
+            <div style="font-size:3rem; margin-bottom:10px;">🔐</div>
+            <h3 style="color:white; margin-bottom:20px;">Organizer Access</h3>
+
+            <input type="password" id="admin-pin-input" placeholder="Enter PIN"
+                style="text-align:center; font-size:1.5rem; letter-spacing:5px; margin-bottom:20px; background:white;"
+                inputmode="numeric">
+
+            <div style="display:flex; gap:10px;">
+                <button id="overlay-secondary-btn" class="secondary-btn-full" onclick="closeAdminLogin()">Cancel</button>
+                <button id="overlay-primary-btn" class="primary-btn-full" onclick="submitAdminPin()">Unlock</button>
+            </div>
+            
+            <p id="admin-login-error" class="error-msg" style="text-align:center; margin-top:10px;">Incorrect PIN</p>
+        </div>
+    </div>
+
     <div class="container">
         <div id="scan-view" class="card">
             <h2>Welcome</h2>
             <p id="scan-status">Please tap your NFC chip to begin.</p>
-            <div style="margin-top: 30px; text-align: center; opacity: 0.3;">
+            <div style="margin-top: 30px; text-align: center;">
                 <a href="#" onclick="accessAdmin()"
                     style="color: var(--text-secondary); font-size: 0.75rem; text-decoration: none;">🔑 Organizer
                     Access</a>
@@ -337,36 +358,6 @@
             </div>
         </div>
     </div>
-    <!-- <div id="success-overlay" class="success-overlay hidden">
-            <div class="success-content">
-                <div class="checkmark-circle">
-                    <div class="checkmark draw"></div>
-                </div>
-                <h3>Chip Linked!</h3>
-                <p>Welcome to the floor.</p>
-            </div>
-        </div>
-        <div id="error-overlay" class="error-overlay hidden">
-            <div class="error-content">
-                <div class="error-icon">!</div>
-                <h3>Something went wrong</h3>
-                <p id="error-message">Check your connection and try again.</p>
-                <button type="button" class="secondary-btn" onclick="hideErrorOverlay()">Try Again</button>
-            </div>
-        </div>
-    </div> -->
-    <!-- <div id="confirm-modal" class="error-overlay hidden">
-        <div class="card feedback-card" style="text-align: center;">
-            <h3 style="color: var(--text-primary);">Delete Log?</h3>
-            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 20px;">
-                This will remove the pending dance from your history.
-            </p>
-            <div style="display: flex; gap: 10px;">
-                <button id="modal-cancel-btn" class="secondary-btn" style="width: 100%; height: 45px;">Back</button>
-                <button id="modal-confirm-btn" class="primary-btn" style="width: 100%; height: 45px; background: var(--error);">Delete</button>
-            </div>
-        </div>
-    </div> -->
     <div id="master-overlay" class="overlay hidden">
         <div class="overlay-card">
             <div id="overlay-icon-container">

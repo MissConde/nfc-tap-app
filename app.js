@@ -783,9 +783,6 @@ window.fetchAdminStats = async function () {
 
         // 4. Live Feed
         const elFeedList = document.getElementById('live-feed-list');
-        const elBadge = document.getElementById('density-badge');
-
-        if (elBadge) elBadge.innerText = `${data.dancesLastHour}/hr`;
 
         if (elFeedList) {
             if (!data.recentDances || data.recentDances.length === 0) {

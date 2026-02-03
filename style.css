@@ -688,39 +688,22 @@ button.btn-locked {
     color: #333;
     cursor: pointer;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-    transition: all 0.2s;
+    /* transition: all 0.2s; */
 }
 
 .accordion-header.active {
     background: var(--primary);
     color: white;
     border-color: var(--primary);
-    margin-bottom: 0;
+    /* margin-bottom: 0;
     /* Attach to content */
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
+    /*border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0; */
 }
 
 /* Adjust Content for Accordion */
 .admin-tab-content {
     /* Mobile: when active, it sits under the header */
-}
-
-/* Desktop Overrides */
-@media (min-width: 768px) {
-    .tabs {
-        display: flex;
-        /* Show Tabs */
-    }
-
-    .accordion-header {
-        display: none;
-        /* Hide Accordion Headers */
-    }
-
-    .admin-grid {
-        grid-template-columns: 1fr 1fr;
-    }
 }
 
 /* --- ADMIN GRID SYSTEM --- */
@@ -744,6 +727,16 @@ button.btn-locked {
     .admin-grid-3 {
         grid-template-columns: 1fr 1fr 1fr;
         /* Specific: 3 columns (Row 1) */
+    }
+
+    .tabs {
+        display: flex;
+        /* Show Tabs */
+    }
+
+    .accordion-header {
+        display: none;
+        /* Hide Accordion Headers */
     }
 }
 
@@ -830,7 +823,6 @@ button.btn-locked {
 }
 
 /* --- SCROLLABLE CARDS --- */
-/* --- SCROLLABLE CARDS --- */
 .scrollable-admin-card {
     /* Responsive Height: Fills remaining space on desktop */
     height: 400px;
@@ -903,13 +895,4 @@ button.btn-locked {
     padding: 12px 0;
     border-bottom: 1px solid #eee;
     color: #333;
-}
-
-.badge {
-    background: var(--primary);
-    color: white;
-    padding: 3px 10px;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: bold;
 }

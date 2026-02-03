@@ -741,43 +741,68 @@ window.fetchAdminStats = async function () {
     try {
         const resp = await fetch(`${WEB_APP_URL}?action=getAdminStats`);
         const data = await resp.json();
+        console.log("Admin Stats Data:", data); // DEBUG LOG
 
-        // 1. Update Pulse (Active / Total)
-        document.getElementById('pulse-count').innerText = `${data.activeDancers}/${data.totalDancers}`;
+        // 1. Update Pulse (Total Users Only)
+        // Check if element exists to avoid "Cannot set properties of null"
+        const elPulse = document.getElementById('pulse-count');
+        if (elPulse) elPulse.innerText = data.totalDancers || 0;
 
-        // 2. Update Vibe Score
-        document.getElementById('vibe-score').innerText = data.avgVibe || "N/A";
+        // 2. Update Vibe Score (Main 'vibe-score' might have been removed or moved)
+        const elVibe = document.getElementById('vibe-score');
+        if (elVibe) elVibe.innerText = data.avgVibe || "N/A";
+
+        // Also update the Feedback tab version
+        const fbScore = document.getElementById('feedback-vibe-score');
+        if (fbScore) fbScore.innerText = data.avgVibe || "N/A";
 
         // 3. Update Balance Bar
-        const leadPct = data.percentLeaders;
-        document.getElementById('balance-bar').style.width = `${leadPct}%`;
-        document.getElementById('role-lead-pct').innerText = `${leadPct}%`;
-        document.getElementById('role-follow-pct').innerText = `${100 - leadPct}%`;
+        const elLeadPct = document.getElementById('role-lead-pct');
+        const elFollowPct = document.getElementById('role-follow-pct');
+        const elBar = document.getElementById('balance-bar');
 
-        // 4. Update Feed & Density
-        const feedList = document.getElementById('live-feed-list');
-        if (data.recentDances && data.recentDances.length > 0) {
-            feedList.innerHTML = data.recentDances.map(d => `
-                <li style="padding: 10px 0; border-bottom: 1px solid #eee; font-size: 0.9rem;">
-                    <strong>${d.time}</strong>: ${d.pair}
-                </li>`).join('');
+        const leadPct = data.percentLeaders;
+        const followPct = 100 - leadPct;
+
+        if (elBar) elBar.style.width = `${leadPct}%`;
+        if (elLeadPct) elLeadPct.innerText = `${leadPct}%`;
+        if (elFollowPct) elFollowPct.innerText = `${followPct}%`;
+
+        // 4. Live Feed
+        const elFeedList = document.getElementById('live-feed-list');
+        const elBadge = document.getElementById('density-badge');
+
+        if (elBadge) elBadge.innerText = `${data.dancesLastHour}/hr`;
+
+        if (elFeedList) {
+            if (!data.recentDances || data.recentDances.length === 0) {
+                elFeedList.innerHTML = '<li style="padding:10px; color:#999; text-align:center;">Quiet on the floor...</li>';
+            } else {
+                elFeedList.innerHTML = data.recentDances.map(d => `
+                    <li style="padding: 10px 0; border-bottom: 1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-weight:500; color:#333;">${d.pair}</span>
+                        <span style="font-size:0.8rem; color:#999;">${d.time}</span>
+                    </li>
+                `).join('');
+            }
         }
 
-        // Density Badge
-        const density = data.dancesLastHour || 0;
-        document.getElementById('density-badge').innerText = `${density} dances / hr`;
-
-        // 5. Update Top Dancers
-        const topList = document.getElementById('top-dancers-list');
-        if (data.topDancers && data.topDancers.length > 0) {
-            topList.innerHTML = data.topDancers.map(d => `
-                <tr style="border-bottom:1px solid #f0f0f0;">
-                    <td style="padding:8px 0;">${d.alias}</td>
-                    <td style="padding:8px 0; color:#666; font-size:0.8rem;">${d.role}</td>
-                    <td style="padding:8px 0; text-align:right; font-weight:bold;">${d.count}</td>
-                </tr>`).join('');
-        } else {
-            topList.innerHTML = '<tr><td colspan="3" style="padding:10px 0; text-align:center; color:#999;">No data yet</td></tr>';
+        // 5. Top Dancers
+        const elTopList = document.getElementById('top-dancers-list');
+        if (elTopList) {
+            if (!data.topDancers || data.topDancers.length === 0) {
+                elTopList.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:15px; color:#999;">No data yet</td></tr>';
+            } else {
+                elTopList.innerHTML = data.topDancers.map((d, i) => `
+                    <tr style="border-bottom:1px solid #f0f0f0;">
+                        <td style="padding:8px 0; font-weight:500;">
+                            ${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : ''} ${d.alias}
+                        </td>
+                        <td style="padding:8px 0; font-size:0.85rem; color:#666;">${d.role}</td>
+                        <td style="padding:8px 0; text-align:right; font-weight:bold; color:var(--primary);">${d.count}</td>
+                    </tr>
+                `).join('');
+            }
         }
 
     } catch (e) {

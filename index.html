@@ -196,85 +196,123 @@
                 <button class="tab-btn" onclick="switchAdminTab('tools')">🛠 Tools</button>
             </div>
 
-            <!-- TAB 1: PULSE (METRICS) -->
+            <!-- SECTION 1: PULSE -->
+            <button class="accordion-header active" onclick="toggleAdminAccordion('pulse')">
+                <span>📊 Live Pulse</span>
+                <span>▼</span>
+            </button>
             <div id="tab-pulse" class="admin-tab-content">
-                <!-- Grid Container for Desktop -->
-                <div class="admin-grid">
-                    <!-- The Pulse & Vibe -->
-                    <div class="stat-grid" style="margin-bottom: 20px;">
-                        <div class="card bg-light" style="padding: 15px; text-align:center;">
-                            <div style="font-size: 2rem;">👥</div>
-                            <div class="stat-value" id="pulse-count">--</div>
-                            <div class="stat-label">Registered Users</div>
-                        </div>
-                        <div class="card bg-light" style="padding: 15px; text-align:center;">
-                            <div style="font-size: 2rem;">⭐</div>
-                            <div class="stat-value" id="vibe-score">--</div>
-                            <div class="stat-label">Vibe Score</div>
+
+                <!-- ROW 1: OVERVIEW STATS -->
+                <div class="admin-grid" style="margin-bottom: 20px;">
+                    <!-- Total Dancers -->
+                    <div class="card bg-light"
+                        style="padding: 20px; text-align:center; display:flex; flex-direction:column; justify-content:center;">
+                        <div style="font-size: 2.5rem; margin-bottom:5px;">👥</div>
+                        <div class="stat-value" id="pulse-count"
+                            style="font-size:1.8rem; font-weight:800; color:var(--text-primary);">--</div>
+                        <div class="stat-label"
+                            style="text-transform:uppercase; letter-spacing:1px; font-size:0.75rem;">Registered Users
                         </div>
                     </div>
 
                     <!-- The Balance -->
-                    <div class="card" style="margin-bottom: 20px;">
-                        <h3>⚖️ The Balance</h3>
-                        <div style="display:flex; align-items:center; margin-top:10px;">
-                            <span style="width:50px; font-weight:bold; color:var(--primary);">Lead</span>
-                            <div
-                                style="flex-grow:1; height:10px; background:#eee; border-radius:5px; margin:0 10px; overflow:hidden;">
-                                <div id="balance-bar"
-                                    style="width: 50%; height:100%; background:var(--primary); transition: width 0.5s;">
-                                </div>
-                            </div>
+                    <div class="card"
+                        style="padding:20px; display:flex; flex-direction:column; justify-content:center;">
+                        <h3 style="margin-top:0; margin-bottom:15px; font-size:1rem;">⚖️ Role Balance</h3>
+
+                        <div style="display:flex; align-items:center; margin-bottom:5px;">
                             <span
-                                style="width:50px; font-weight:bold; text-align:right; color:var(--secondary);">Follow</span>
+                                style="flex:1; font-weight:bold; color:var(--primary); font-size:0.9rem;">Leaders</span>
+                            <span id="role-lead-pct" style="font-weight:bold;">--%</span>
                         </div>
+
                         <div
-                            style="display:flex; justify-content:space-between; font-size:0.8rem; color:#666; margin-top:5px;">
-                            <span id="role-lead-pct">--%</span>
-                            <span id="role-follow-pct">--%</span>
+                            style="width:100%; height:12px; background:#eee; border-radius:6px; overflow:hidden; margin-bottom:15px;">
+                            <div id="balance-bar"
+                                style="width: 50%; height:100%; background:var(--primary); transition: width 0.5s;">
+                            </div>
+                        </div>
+
+                        <div style="display:flex; align-items:center;">
+                            <span
+                                style="flex:1; font-weight:bold; color:var(--secondary); font-size:0.9rem;">Followers</span>
+                            <span id="role-follow-pct" style="font-weight:bold;">--%</span>
                         </div>
                     </div>
+                </div>
 
+                <!-- ROW 2: LIVE ACTIONS -->
+                <div class="admin-grid">
                     <!-- Interaction Feed -->
-                    <div class="card" style="margin-bottom: 20px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div class="card" style="height: 350px; display:flex; flex-direction:column;">
+                        <div
+                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-shrink:0;">
                             <h3 style="margin:0;">🔥 Live Feed</h3>
                             <span id="density-badge"
-                                style="background:var(--primary); color:white; padding:2px 8px; border-radius:12px; font-size:0.7rem;">0
-                                dances / hr</span>
+                                style="background:var(--primary); color:white; padding:2px 8px; border-radius:12px; font-size:0.7rem;">0/hr</span>
                         </div>
-                        <ul id="live-feed-list"
-                            style="list-style:none; padding:0; margin-top:10px; max-height: 200px; overflow-y:auto;">
-                            <li style="padding: 10px 0; border-bottom: 1px solid #eee; color: #666; font-size: 0.9rem;">
-                                Waiting...</li>
-                        </ul>
+                        <div style="flex-grow:1; overflow-y:auto; padding-right:5px;">
+                            <ul id="live-feed-list" style="list-style:none; padding:0; margin:0;">
+                                <li
+                                    style="padding: 10px 0; border-bottom: 1px solid #eee; color: #666; font-size: 0.9rem;">
+                                    Waiting...</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Top Dancers -->
+                    <div class="card" style="height: 350px; display:flex; flex-direction:column;">
+                        <div style="margin-bottom:10px; flex-shrink:0;">
+                            <h3 style="margin:0;">🏆 Top Socializers</h3>
+                        </div>
+                        <div style="flex-grow:1; overflow-y:auto; padding-right:5px;">
+                            <table style="width:100%; text-align:left; border-collapse:collapse;">
+                                <thead
+                                    style="color:var(--text-secondary); font-size:0.8rem; border-bottom:1px solid #eee; position:sticky; top:0; background:white;">
+                                    <tr>
+                                        <th style="padding-bottom:10px;">Alias</th>
+                                        <th style="padding-bottom:10px;">Role</th>
+                                        <th style="padding-bottom:10px; text-align:right;">#</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="top-dancers-list" style="font-size:0.9rem; color:#333;">
+                                    <tr>
+                                        <td colspan="3" style="padding:10px 0; text-align:center; color:#999;">
+                                            Loading...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- TAB 2: FEEDBACK (Placeholder/Leaderboard) -->
+            <!-- SECTION 2: FEEDBACK -->
+            <button class="accordion-header" onclick="toggleAdminAccordion('feedback')">
+                <span>⭐ Feedback</span>
+                <span>▼</span>
+            </button>
             <div id="tab-feedback" class="admin-tab-content hidden">
-                <!-- Top Dancers -->
-                <div class="card" style="margin-bottom: 20px;">
-                    <h3>🏆 Top 5 Socializers</h3>
-                    <table style="width:100%; text-align:left; border-collapse:collapse; margin-top:10px;">
-                        <thead style="color:var(--text-secondary); font-size:0.8rem; border-bottom:1px solid #eee;">
-                            <tr>
-                                <th style="padding-bottom:5px;">Alias</th>
-                                <th style="padding-bottom:5px;">Role</th>
-                                <th style="padding-bottom:5px; text-align:right;">Dances</th>
-                            </tr>
-                        </thead>
-                        <tbody id="top-dancers-list" style="font-size:0.9rem; color:#333;">
-                            <tr>
-                                <td colspan="3" style="padding:10px 0; text-align:center; color:#999;">Loading...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div id="tab-feedback" class="admin-tab-content hidden">
+                    <div class="card" style="margin-bottom: 20px;">
+                        <h3>⭐ Vibe & Sentiment</h3>
+                        <p style="color:#666; font-style:italic;">Detailed feedback analysis and sentiment graphs coming
+                            soon...</p>
+                        <div style="margin-top:20px; text-align:center;">
+                            <div style="font-size:3rem; font-weight:bold; color:var(--primary);"
+                                id="feedback-vibe-score">--</div>
+                            <span>Average Vibe Score</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- TAB 3: TOOLS -->
+            <!-- SECTION 3: TOOLS -->
+            <button class="accordion-header" onclick="toggleAdminAccordion('tools')">
+                <span>🛠 Tools</span>
+                <span>▼</span>
+            </button>
             <div id="tab-tools" class="admin-tab-content hidden">
                 <div class="card">
                     <h3>🛠 Management Tools</h3>
@@ -295,8 +333,7 @@
 
                     <!-- Log Out -->
                     <div style="margin-top:20px; text-align:center; border-top:1px solid #eee; padding-top:20px;">
-                        <button class="secondary-btn" onclick="location.reload()"
-                            style="border-color:#ccc; color:#666;">Log Out</button>
+                        <button class="secondary-btn" onclick="location.reload()">Log Out</button>
                     </div>
                 </div>
             </div>

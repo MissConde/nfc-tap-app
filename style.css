@@ -592,45 +592,93 @@ button.btn-locked {
 }
 
 /* --- ADMIN TABS --- */
+/* --- ADMIN TABS & ACCORDION --- */
+/* Desktop Tabs Container */
 .tabs {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-    border-bottom: 1px solid #ddd;
-    padding-bottom: 10px;
+    display: none;
+    /* Hidden by default (Mobile) */
+    gap: 15px;
+    margin-bottom: 25px;
+    padding: 5px;
+    background: #f0f0f0;
+    border-radius: 12px;
 }
 
+/* Tab Buttons (Desktop) */
 .tab-btn {
+    flex: 1;
     background: transparent;
     border: none;
-    font-size: 1rem;
+    font-size: 0.95rem;
     color: #666;
-    padding: 8px 12px;
+    padding: 10px 15px;
     cursor: pointer;
     border-radius: 8px;
-    transition: all 0.2s;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    font-weight: 500;
 }
 
 .tab-btn.active {
-    background: var(--primary);
-    color: white;
+    background: white;
+    color: var(--primary);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     font-weight: bold;
+    transform: scale(1.02);
 }
 
 .tab-btn:hover:not(.active) {
-    background: #e5e7eb;
+    background: rgba(255, 255, 255, 0.5);
+    color: #333;
 }
 
-/* --- RESPONSIVE ADMIN GRID --- */
-.admin-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 20px;
+/* Mobile Accordion Headers */
+.accordion-header {
+    display: flex;
+    /* Visible by default (Mobile) */
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    background: white;
+    padding: 15px 20px;
+    margin-bottom: 10px;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: bold;
+    color: #333;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s;
 }
 
+.accordion-header.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    margin-bottom: 0;
+    /* Attach to content */
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+/* Adjust Content for Accordion */
+.admin-tab-content {
+    /* Mobile: when active, it sits under the header */
+}
+
+/* Desktop Overrides */
 @media (min-width: 768px) {
+    .tabs {
+        display: flex;
+        /* Show Tabs */
+    }
+
+    .accordion-header {
+        display: none;
+        /* Hide Accordion Headers */
+    }
+
     .admin-grid {
         grid-template-columns: 1fr 1fr;
-        /* 2 Columns on laptop */
     }
 }

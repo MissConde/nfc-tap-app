@@ -2,7 +2,7 @@
  * app.js - Optimized for Dance Tracker PWA 2026
  */
 
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzot9vydKYUJgJbZ4q5Pl8q5zcwfJvSoeTMaKJwaSzhfljCCd0kL1yX25ISd_dETAgS/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby6a6YYZLqUD8tuOJlRn4nWTgQdyoerPqyf-yJ_o0YEXCy_hXYqkujqEpe0sAro0sIk/exec";
 const urlParams = new URLSearchParams(window.location.search);
 const idFromURL = urlParams.get('id');
 let fullHistoryData = [];
@@ -708,6 +708,126 @@ window.showFeedbackForm = async function () {
         document.getElementById('master-overlay').classList.add('hidden');
         document.getElementById('feedback-overlay').classList.remove('hidden');
     } catch (e) {
-        showStatus('error', 'Connection Error', 'Could not load feedback questions.');
     }
+};
+
+/**
+ * ORGANIZER ACCESS
+ * PIN: 2026 (Simple Hash Verification)
+ */
+window.accessAdmin = function () {
+    const pin = prompt("Enter Organizer PIN:");
+    if (!pin) return;
+
+    // Simple Jenkins-like hash for client-side obfuscation
+    const hashCode = s => s.split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a }, 0);
+
+    // Hash for "2026" is 1537282 (Corrected)
+    if (hashCode(pin) === 1537282) {
+        showStatus('success', 'Access Granted', 'Welcome to Admin Mode');
+        setTimeout(() => {
+            showView('organizer-view');
+            fetchAdminStats(); // Load data immediately
+        }, 1200);
+    } else {
+        showStatus('error', 'Access Denied', 'Incorrect PIN');
+    }
+};
+
+/**
+ * FETCH ADMIN DASHBOARD DATA
+ */
+window.fetchAdminStats = async function () {
+    try {
+        const resp = await fetch(`${WEB_APP_URL}?action=getAdminStats`);
+        const data = await resp.json();
+
+        // 1. Update Pulse (Active / Total)
+        document.getElementById('pulse-count').innerText = `${data.activeDancers}/${data.totalDancers}`;
+
+        // 2. Update Vibe Score
+        document.getElementById('vibe-score').innerText = data.avgVibe || "N/A";
+
+        // 3. Update Balance Bar
+        const leadPct = data.percentLeaders;
+        document.getElementById('balance-bar').style.width = `${leadPct}%`;
+        document.getElementById('role-lead-pct').innerText = `${leadPct}%`;
+        document.getElementById('role-follow-pct').innerText = `${100 - leadPct}%`;
+
+        // 4. Update Feed & Density
+        const feedList = document.getElementById('live-feed-list');
+        if (data.recentDances && data.recentDances.length > 0) {
+            feedList.innerHTML = data.recentDances.map(d => `
+                <li style="padding: 10px 0; border-bottom: 1px solid #eee; font-size: 0.9rem;">
+                    <strong>${d.time}</strong>: ${d.pair}
+                </li>`).join('');
+        }
+
+        // Density Badge
+        const density = data.dancesLastHour || 0;
+        document.getElementById('density-badge').innerText = `${density} dances / hr`;
+
+        // 5. Update Top Dancers
+        const topList = document.getElementById('top-dancers-list');
+        if (data.topDancers && data.topDancers.length > 0) {
+            topList.innerHTML = data.topDancers.map(d => `
+                <tr style="border-bottom:1px solid #f0f0f0;">
+                    <td style="padding:8px 0;">${d.alias}</td>
+                    <td style="padding:8px 0; color:#666; font-size:0.8rem;">${d.role}</td>
+                    <td style="padding:8px 0; text-align:right; font-weight:bold;">${d.count}</td>
+                </tr>`).join('');
+        } else {
+            topList.innerHTML = '<tr><td colspan="3" style="padding:10px 0; text-align:center; color:#999;">No data yet</td></tr>';
+        }
+
+    } catch (e) {
+        console.error("Failed to load admin stats", e);
+    }
+};
+
+/**
+ * ADMIN SEARCH
+ */
+window.adminSearchDancer = async function () {
+    const input = document.getElementById('admin-search-input');
+    const resultBox = document.getElementById('admin-search-result');
+    const query = input.value.trim();
+
+    if (!query) return;
+
+    resultBox.innerHTML = '<span style="color:#666;">Searching...</span>';
+    resultBox.classList.remove('hidden');
+
+    try {
+        const resp = await fetch(`${WEB_APP_URL}?action=adminSearch&query=${encodeURIComponent(query)}`);
+        const data = await resp.json();
+
+        if (data.found) {
+            resultBox.innerHTML = `
+                <div style="font-weight:bold; color:var(--primary);">${data.realName}</div>
+                <div style="font-size:0.9rem; color:#444; margin-top:2px;">Role: ${data.role}</div>
+                <div style="font-size:0.8rem; color:#666; margin-top:5px;">Email: <a href="mailto:${data.email}">${data.email}</a></div>
+                <div style="font-size:0.8rem; color:#666;">Chip: ${data.chipId}</div>
+            `;
+        } else {
+            resultBox.innerHTML = '<span style="color:var(--error);">Dancer not found.</span>';
+        }
+    } catch (e) {
+        resultBox.innerHTML = '<span style="color:var(--error);">Search failed.</span>';
+    }
+};
+
+window.switchAdminTab = function (tabName) {
+    // 1. hide all tabs
+    document.querySelectorAll('.admin-tab-content').forEach(el => el.classList.add('hidden'));
+    document.getElementById('tab-' + tabName).classList.remove('hidden');
+
+    // 2. update buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    // Find the button that triggered this? Or simplifies by knowing order. 
+    // Easier: click handler passes event, but let's just cycle.
+    const buttons = document.querySelectorAll('.tab-btn');
+    if (tabName === 'pulse') buttons[0].classList.add('active');
+    if (tabName === 'feedback') buttons[1].classList.add('active');
+    if (tabName === 'tools') buttons[2].classList.add('active');
 };

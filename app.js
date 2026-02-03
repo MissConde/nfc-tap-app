@@ -597,6 +597,11 @@ function showView(viewId) {
 window.selectRole = function (roleValue) {
     document.getElementById('role').value = roleValue;
     document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('active'));
+
+    // Visually highlight the selected button
+    const btn = document.getElementById('btn-' + roleValue.toLowerCase());
+    if (btn) btn.classList.add('active');
+
     validateFormState();
 };
 

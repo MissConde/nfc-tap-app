@@ -73,7 +73,8 @@ textarea {
     border-radius: 8px;
     font-size: 16px;
     box-sizing: border-box;
-    color: #000000 !important; /* Force black text so it is readable */
+    color: #000000 !important;
+    /* Force black text so it is readable */
 }
 
 /* --- ACCESSIBLE SELECT OPTIONS --- */
@@ -301,17 +302,20 @@ button.btn-locked {
 }
 
 .stat-card {
-    background: var(--surface); /* Lighter Navy */
-    padding: 18px 10px;        /* Taller padding for a better mobile look */
+    background: var(--surface);
+    /* Lighter Navy */
+    padding: 18px 10px;
+    /* Taller padding for a better mobile look */
     border-radius: 12px;
     text-align: center;
-    
+
     /* Simplified Border: Single color instead of a complex gradient */
-    border: 1.5px solid var(--secondary); /* The Neon Blue border */
-    
+    border: 1.5px solid var(--secondary);
+    /* The Neon Blue border */
+
     /* Clean Neon Glow: Makes the cards stand out on a dark background */
-    box-shadow: 0 4px 15px rgba(56, 189, 248, 0.2); 
-    
+    box-shadow: 0 4px 15px rgba(56, 189, 248, 0.2);
+
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -326,7 +330,8 @@ button.btn-locked {
 .stat-value {
     font-size: 1.5rem;
     font-weight: 800;
-    color: #ffffff; /* Pure white for maximum contrast on mobile */
+    color: #ffffff;
+    /* Pure white for maximum contrast on mobile */
     margin-bottom: 2px;
 }
 
@@ -371,7 +376,7 @@ button.btn-locked {
     left: 0;
     width: 100%;
     height: 100%;
-    background: var(--background);
+    background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(5px);
     display: flex;
     justify-content: center;
@@ -382,6 +387,7 @@ button.btn-locked {
 }
 
 #feedback-overlay {
+    background: var(--background);
     opacity: 1;
     backdrop-filter: none;
     align-items: flex-start;

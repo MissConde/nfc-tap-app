@@ -40,11 +40,51 @@ body {
 .container {
     width: 100%;
     max-width: 500px;
-    padding: 20px;
 }
 
+/* --- UTILITIES --- */
 .hidden {
     display: none !important;
+}
+
+/* --- OVERLAYS --- */
+.master-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 2000;
+    /* High Z-Index */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(5px);
+}
+
+.loader-container {
+    text-align: center;
+}
+
+.spinner {
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top: 4px solid #fff;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* --- CARDS & TYPOGRAPHY --- */
@@ -330,9 +370,9 @@ button.btn-locked {
 .stat-value {
     font-size: 1.5rem;
     font-weight: 800;
-    color: #ffffff;
-    /* Pure white for maximum contrast on mobile */
-    margin-bottom: 2px;
+    color: var(--text-secondary)
+        /* Pure white for maximum contrast on mobile */
+        margin-bottom: 2px;
 }
 
 .stat-label {
@@ -681,4 +721,181 @@ button.btn-locked {
     .admin-grid {
         grid-template-columns: 1fr 1fr;
     }
+}
+
+/* --- ADMIN GRID SYSTEM --- */
+.admin-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    /* Default: 1 column (Phone) */
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+/* Tablet & Desktop Layout */
+@media (min-width: 768px) {
+    .admin-grid {
+        grid-template-columns: 1fr 1fr;
+        /* Default: 2 columns (Row 2) */
+    }
+
+    .admin-grid-3 {
+        grid-template-columns: 1fr 1fr 1fr;
+        /* Specific: 3 columns (Row 1) */
+    }
+}
+
+/* --- ADMIN CARD STYLING --- */
+/* Standardize Header Spacing */
+#organizer-view .card h3 {
+    margin-top: 0;
+    margin-bottom: 0;
+    /* Remove bottom margin to let flex gap handle it */
+    font-size: 1rem;
+    text-align: center;
+    width: 100%;
+    flex-shrink: 0;
+    /* Prevent header from shrinking */
+}
+
+/* Specific Override for Left-Aligned Headers in Row 2 if needed */
+.scrollable-admin-card h3 {
+    text-align: left;
+}
+
+/* Content Centering Wrapper */
+.card-content-center {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+.stat-summary-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    /* Header stays top */
+    align-items: center;
+    min-height: 140px;
+    padding: 20px !important;
+    gap: 15px;
+    /* Gap between header and content */
+}
+
+.role-balance-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    /* Header stays top */
+    min-height: 140px;
+    padding: 20px !important;
+    gap: 15px;
+}
+
+.balance-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.balance-item .lead {
+    color: var(--primary);
+}
+
+.balance-item .follow {
+    color: var(--secondary);
+}
+
+.progress-container {
+    width: 100%;
+    height: 12px;
+    background: #eee;
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 10px 0;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--primary);
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* --- SCROLLABLE CARDS --- */
+.scrollable-admin-card {
+    height: 400px;
+    /* Fixed height for second row */
+    display: flex;
+    flex-direction: column;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.scroll-area {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+/* Custom Scrollbar for Admin View */
+.scroll-area::-webkit-scrollbar {
+    width: 5px;
+}
+
+.scroll-area::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 10px;
+}
+
+/* Admin List & Table */
+.admin-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.admin-list li {
+    padding: 12px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 0.9rem;
+    color: #444;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.admin-table th {
+    position: sticky;
+    top: 0;
+    background: white;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.admin-table td {
+    padding: 12px 0;
+    border-bottom: 1px solid #eee;
+    color: #333;
+}
+
+.badge {
+    background: var(--primary);
+    color: white;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: bold;
 }

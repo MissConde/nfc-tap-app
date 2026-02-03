@@ -2,7 +2,7 @@
  * app.js - Optimized for Dance Tracker PWA 2026
  */
 
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby6a6YYZLqUD8tuOJlRn4nWTgQdyoerPqyf-yJ_o0YEXCy_hXYqkujqEpe0sAro0sIk/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz1mHvbX3jRqt2FqDPM68iae-QidMlGePK3oT9l4BVNXgpXA0bfx7eccjgL9njzXzsG/exec";
 const urlParams = new URLSearchParams(window.location.search);
 const idFromURL = urlParams.get('id');
 let fullHistoryData = [];
@@ -738,15 +738,24 @@ window.accessAdmin = function () {
  * FETCH ADMIN DASHBOARD DATA
  */
 window.fetchAdminStats = async function () {
+    const loadingOverlay = document.getElementById('admin-loading-overlay');
+
     try {
+        if (loadingOverlay) loadingOverlay.classList.remove('hidden'); // Show Loading
+
         const resp = await fetch(`${WEB_APP_URL}?action=getAdminStats`);
         const data = await resp.json();
         console.log("Admin Stats Data:", data); // DEBUG LOG
 
         // 1. Update Pulse (Total Users Only)
-        // Check if element exists to avoid "Cannot set properties of null"
         const elPulse = document.getElementById('pulse-count');
-        if (elPulse) elPulse.innerText = data.totalDancers || 0;
+        console.log("Updating Pulse. Element found?", !!elPulse, "Value:", data.totalDancers);
+
+        if (elPulse) {
+            elPulse.innerText = data.totalDancers !== undefined ? data.totalDancers : "0";
+            // Force redraw just in case?
+            elPulse.style.display = 'block';
+        }
 
         // 2. Update Vibe Score (Main 'vibe-score' might have been removed or moved)
         const elVibe = document.getElementById('vibe-score');
@@ -755,6 +764,10 @@ window.fetchAdminStats = async function () {
         // Also update the Feedback tab version
         const fbScore = document.getElementById('feedback-vibe-score');
         if (fbScore) fbScore.innerText = data.avgVibe || "N/A";
+
+        // New: Feedback Count
+        const fbCount = document.getElementById('feedback-count');
+        if (fbCount) fbCount.innerText = data.feedbackCount !== undefined ? data.feedbackCount : "--";
 
         // 3. Update Balance Bar
         const elLeadPct = document.getElementById('role-lead-pct');
@@ -807,6 +820,9 @@ window.fetchAdminStats = async function () {
 
     } catch (e) {
         console.error("Failed to load admin stats", e);
+    } finally {
+        const loadingOverlay = document.getElementById('admin-loading-overlay');
+        if (loadingOverlay) loadingOverlay.classList.add('hidden'); // Hide Loading
     }
 };
 

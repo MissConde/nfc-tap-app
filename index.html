@@ -11,6 +11,21 @@
 
 <body>
 
+    <!-- LOADING OVERLAYS -->
+    <div id="master-overlay" class="master-overlay hidden">
+        <div class="loader-container">
+            <div class="spinner"></div>
+            <p id="overlay-text" style="color:white; margin-top:20px;">Connecting...</p>
+        </div>
+    </div>
+
+    <div id="admin-loading-overlay" class="master-overlay hidden" style="background: rgba(255,255,255,0.9);">
+        <div class="loader-container">
+            <div class="spinner" style="border-top-color: var(--primary); border-left-color: var(--primary);"></div>
+            <p style="color:#333; margin-top:20px; font-weight:bold;">Updating Dashboard...</p>
+        </div>
+    </div>
+
     <div class="container">
         <div id="scan-view" class="card">
             <h2>Welcome</h2>
@@ -196,90 +211,74 @@
                 <button class="tab-btn" onclick="switchAdminTab('tools')">🛠 Tools</button>
             </div>
 
-            <!-- SECTION 1: PULSE -->
             <button class="accordion-header active" onclick="toggleAdminAccordion('pulse')">
                 <span>📊 Live Pulse</span>
                 <span>▼</span>
             </button>
-            <div id="tab-pulse" class="admin-tab-content">
 
-                <!-- ROW 1: OVERVIEW STATS -->
-                <div class="admin-grid" style="margin-bottom: 20px;">
-                    <!-- Total Dancers -->
-                    <div class="card bg-light"
-                        style="padding: 20px; text-align:center; display:flex; flex-direction:column; justify-content:center;">
-                        <div style="font-size: 2.5rem; margin-bottom:5px;">👥</div>
-                        <div class="stat-value" id="pulse-count"
-                            style="font-size:1.8rem; font-weight:800; color:var(--text-primary);">--</div>
-                        <div class="stat-label"
-                            style="text-transform:uppercase; letter-spacing:1px; font-size:0.75rem;">Registered Users
+            <div id="tab-pulse" class="admin-tab-content active">
+                <div class="admin-grid admin-grid-3">
+                    <div class="card stat-summary-card">
+                        <h3>👥 Registered Users</h3>
+                        <div class="card-content-center">
+                            <div class="stat-value" id="pulse-count">--</div>
                         </div>
                     </div>
 
-                    <!-- The Balance -->
-                    <div class="card"
-                        style="padding:20px; display:flex; flex-direction:column; justify-content:center;">
-                        <h3 style="margin-top:0; margin-bottom:15px; font-size:1rem;">⚖️ Role Balance</h3>
-
-                        <div style="display:flex; align-items:center; margin-bottom:5px;">
-                            <span
-                                style="flex:1; font-weight:bold; color:var(--primary); font-size:0.9rem;">Leaders</span>
-                            <span id="role-lead-pct" style="font-weight:bold;">--%</span>
-                        </div>
-
-                        <div
-                            style="width:100%; height:12px; background:#eee; border-radius:6px; overflow:hidden; margin-bottom:15px;">
-                            <div id="balance-bar"
-                                style="width: 50%; height:100%; background:var(--primary); transition: width 0.5s;">
+                    <div class="card role-balance-card">
+                        <h3>⚖️ Role Balance</h3>
+                        <div class="card-content-center">
+                            <div class="balance-item" style="width:100%;">
+                                <span class="label lead">Leaders</span>
+                                <span id="role-lead-pct" class="pct">--%</span>
+                            </div>
+                            <div class="progress-container" style="width:100%;">
+                                <div id="balance-bar" class="progress-fill"></div>
+                            </div>
+                            <div class="balance-item" style="width:100%;">
+                                <span class="label follow">Followers</span>
+                                <span id="role-follow-pct" class="pct">--%</span>
                             </div>
                         </div>
+                    </div>
 
-                        <div style="display:flex; align-items:center;">
-                            <span
-                                style="flex:1; font-weight:bold; color:var(--secondary); font-size:0.9rem;">Followers</span>
-                            <span id="role-follow-pct" style="font-weight:bold;">--%</span>
+                    <div class="card stat-summary-card">
+                        <h3>✅ Feedback Completed</h3>
+                        <div class="card-content-center">
+                            <div class="stat-value" id="feedback-count">--</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- ROW 2: LIVE ACTIONS -->
                 <div class="admin-grid">
-                    <!-- Interaction Feed -->
-                    <div class="card" style="height: 350px; display:flex; flex-direction:column;">
-                        <div
-                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-shrink:0;">
-                            <h3 style="margin:0;">🔥 Live Feed</h3>
-                            <span id="density-badge"
-                                style="background:var(--primary); color:white; padding:2px 8px; border-radius:12px; font-size:0.7rem;">0/hr</span>
+                    <div class="card scrollable-admin-card">
+                        <div class="card-header">
+                            <h3>🔥 Live Feed</h3>
+                            <span id="density-badge" class="badge">0/hr</span>
                         </div>
-                        <div style="flex-grow:1; overflow-y:auto; padding-right:5px;">
-                            <ul id="live-feed-list" style="list-style:none; padding:0; margin:0;">
-                                <li
-                                    style="padding: 10px 0; border-bottom: 1px solid #eee; color: #666; font-size: 0.9rem;">
-                                    Waiting...</li>
+                        <div class="scroll-area">
+                            <ul id="live-feed-list" class="admin-list">
+                                <li>Waiting...</li>
                             </ul>
                         </div>
                     </div>
 
-                    <!-- Top Dancers -->
-                    <div class="card" style="height: 350px; display:flex; flex-direction:column;">
-                        <div style="margin-bottom:10px; flex-shrink:0;">
-                            <h3 style="margin:0;">🏆 Top Socializers</h3>
+                    <div class="card scrollable-admin-card">
+                        <div class="card-header">
+                            <h3>🏆 Top Socializers</h3>
                         </div>
-                        <div style="flex-grow:1; overflow-y:auto; padding-right:5px;">
-                            <table style="width:100%; text-align:left; border-collapse:collapse;">
-                                <thead
-                                    style="color:var(--text-secondary); font-size:0.8rem; border-bottom:1px solid #eee; position:sticky; top:0; background:white;">
+                        <div class="scroll-area">
+                            <table class="admin-table">
+                                <thead>
                                     <tr>
-                                        <th style="padding-bottom:10px;">Alias</th>
-                                        <th style="padding-bottom:10px;">Role</th>
-                                        <th style="padding-bottom:10px; text-align:right;">#</th>
+                                        <th style="text-align:left;">Alias</th>
+                                        <th style="text-align:left;">Role</th>
+                                        <th style="text-align:right;">#</th>
                                     </tr>
                                 </thead>
-                                <tbody id="top-dancers-list" style="font-size:0.9rem; color:#333;">
+                                <tbody id="top-dancers-list">
                                     <tr>
-                                        <td colspan="3" style="padding:10px 0; text-align:center; color:#999;">
-                                            Loading...</td>
+                                        <td colspan="3" class="loading">Loading...</td>
                                     </tr>
                                 </tbody>
                             </table>

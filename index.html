@@ -11,10 +11,21 @@
 
 <body>
 
+    <!-- LOADING OVERLAYS -->
+
+
+
+    <!-- ADMIN LOGIN OVERLAY -->
+
     <div class="container">
         <div id="scan-view" class="card">
             <h2>Welcome</h2>
             <p id="scan-status">Please tap your NFC chip to begin.</p>
+            <!-- <div style="margin-top: 30px; text-align: center;">
+                <a href="admin.html" style="color: var(--text-secondary); font-size: 0.75rem; text-decoration: none;">🔑
+                    Organizer
+                    Access</a>
+            </div> -->
         </div>
         <div id="registration-view" class="card hidden">
             <h2>Dancer Profile</h2>
@@ -158,8 +169,7 @@
         </div>
 
         <div id="feedback-overlay" class="error-overlay hidden">
-            <div class="card feedback-card"
-                style="width: 90%; max-width: 500px; padding: 25px; border-radius: 16px;">
+            <div class="card feedback-card" style="width: 90%; max-width: 500px; padding: 25px; border-radius: 16px;">
                 <h3 style="color: var(--primary); margin-bottom: 5px;">Festival Feedback</h3>
                 <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 20px;">
                     Unlock your stats by sharing your experience.
@@ -178,45 +188,7 @@
             </div>
         </div>
 
-        <div id="organizer-view" class="hidden">
-            <div class="card" style="border-left: 4px solid var(--error);">
-                <h3>Organizer Dashboard</h3>
-                <p>Private Directory (Real Names)</p>
-                <div id="admin-stats">
-                    <button onclick="alert('Exporting PDF...')">Download Attendance</button>
-                </div>
-            </div>
-        </div>
-        <!-- <div id="success-overlay" class="success-overlay hidden">
-            <div class="success-content">
-                <div class="checkmark-circle">
-                    <div class="checkmark draw"></div>
-                </div>
-                <h3>Chip Linked!</h3>
-                <p>Welcome to the floor.</p>
-            </div>
-        </div>
-        <div id="error-overlay" class="error-overlay hidden">
-            <div class="error-content">
-                <div class="error-icon">!</div>
-                <h3>Something went wrong</h3>
-                <p id="error-message">Check your connection and try again.</p>
-                <button type="button" class="secondary-btn" onclick="hideErrorOverlay()">Try Again</button>
-            </div>
-        </div>
-    </div> -->
-        <!-- <div id="confirm-modal" class="error-overlay hidden">
-        <div class="card feedback-card" style="text-align: center;">
-            <h3 style="color: var(--text-primary);">Delete Log?</h3>
-            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 20px;">
-                This will remove the pending dance from your history.
-            </p>
-            <div style="display: flex; gap: 10px;">
-                <button id="modal-cancel-btn" class="secondary-btn" style="width: 100%; height: 45px;">Back</button>
-                <button id="modal-confirm-btn" class="primary-btn" style="width: 100%; height: 45px; background: var(--error);">Delete</button>
-            </div>
-        </div>
-    </div> -->
+
         <div id="master-overlay" class="overlay hidden">
             <div class="overlay-card">
                 <div id="overlay-icon-container">

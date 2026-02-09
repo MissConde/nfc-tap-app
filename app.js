@@ -2,7 +2,7 @@
  * app.js - Optimized for Dance Tracker PWA 2026
  */
 
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzot9vydKYUJgJbZ4q5Pl8q5zcwfJvSoeTMaKJwaSzhfljCCd0kL1yX25ISd_dETAgS/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby5wet3I48Q1zmUxWo5eHFAycw6wbwGYggHuk3_2IRMaBM1q2ePr78ayQxdVCwjM7p1/exec";
 const urlParams = new URLSearchParams(window.location.search);
 const idFromURL = urlParams.get('id');
 let fullHistoryData = [];
@@ -708,6 +708,5 @@ window.showFeedbackForm = async function () {
         document.getElementById('master-overlay').classList.add('hidden');
         document.getElementById('feedback-overlay').classList.remove('hidden');
     } catch (e) {
-        showStatus('error', 'Connection Error', 'Could not load feedback questions.');
     }
 };

@@ -159,6 +159,10 @@ async function handleAutoLog(myID, partnerID) {
             if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
         } else {
             showStatus('success', 'Dance Logged', 'Waiting for partner to scan back.');
+             // Single short pulse for "Logged but waiting"
+             if (navigator.vibrate) {
+                navigator.vibrate(100); 
+            }
         }
 
         // Only reload view if it was a valid interaction (not unregistered)
@@ -166,6 +170,11 @@ async function handleAutoLog(myID, partnerID) {
             loadDancerView();
         }
     } catch (e) {
+        // --- ERROR VIBRATION ---
+        // Three rapid short pulses for error
+        if (navigator.vibrate) {
+            navigator.vibrate([50, 50, 50, 50, 50]); 
+        }
         showStatus('error', 'Tap Failed', 'Check your internet connection.');
     }
 }

@@ -1,7 +1,7 @@
 {
   "name": "Dance Tracker PWA",
   "short_name": "DanceTracker",
-  "start_url": "/index.html",
+  "start_url": "/nfc-tap-app/index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0f172a",

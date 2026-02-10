@@ -10,17 +10,28 @@ let fullHistoryData = [];
 window.onload = async () => {
     const savedUser = JSON.parse(localStorage.getItem('danceAppUser'));
 
+    // --- PERSISTENCE FIX ---
+    // 1. If ID is in URL (Safari/Browser), save it immediately.
+    if (idFromURL) {
+        localStorage.setItem('pendingChipId', idFromURL);
+    }
+
+    // 2. Retrieve ID: Use URL first, fallback to pendingChipId (for PWA)
+    const activeChipId = idFromURL || localStorage.getItem('pendingChipId');
+
     if (savedUser && savedUser.chipID) {
         // --- LOGGED IN ---
         showView('dancer-view');
         loadDancerView();
 
-        if (idFromURL && idFromURL !== savedUser.chipID) {
-            handleAutoLog(savedUser.chipID, idFromURL);
+        // Check if we scanned a DIFFERENT chip while logged in
+        if (activeChipId && activeChipId !== savedUser.chipID) {
+            handleAutoLog(savedUser.chipID, activeChipId);
         }
-    } else if (idFromURL) {
-        // --- NEW CHIP DETECTED ---
-        checkUserInSystem(idFromURL);
+    } else if (activeChipId) {
+        // --- NEW CHIP DETECTED (Browser OR PWA) ---
+        // Use the persistent ID to triggering the flow
+        checkUserInSystem(activeChipId);
     } else {
         // --- PROMPT SCAN ---
         showView('scan-view');
@@ -159,9 +170,9 @@ async function handleAutoLog(myID, partnerID) {
             if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
         } else {
             showStatus('success', 'Dance Logged', 'Waiting for partner to scan back.');
-             // Single short pulse for "Logged but waiting"
-             if (navigator.vibrate) {
-                navigator.vibrate(100); 
+            // Single short pulse for "Logged but waiting"
+            if (navigator.vibrate) {
+                navigator.vibrate(100);
             }
         }
 
@@ -173,7 +184,7 @@ async function handleAutoLog(myID, partnerID) {
         // --- ERROR VIBRATION ---
         // Three rapid short pulses for error
         if (navigator.vibrate) {
-            navigator.vibrate([50, 50, 50, 50, 50]); 
+            navigator.vibrate([50, 50, 50, 50, 50]);
         }
         showStatus('error', 'Tap Failed', 'Check your internet connection.');
     }
@@ -354,6 +365,8 @@ async function checkUserInSystem(id) {
                     localStorage.setItem('danceAppUser', JSON.stringify({
                         chipID: id, alias: result.alias, role: result.role, userKey: result.storedKey
                     }));
+                    // Cleanup pending ID as we are now fully logged in
+                    localStorage.removeItem('pendingChipId');
                     location.reload();
                 } else {
                     // User denied, maybe show scan status again
@@ -374,9 +387,11 @@ document.getElementById('regForm').onsubmit = async (e) => {
     if (!e.target.checkValidity() || !roleValue) return;
 
     const userKey = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const chipID = idFromURL || localStorage.getItem('pendingChipId');
+
     const payload = {
         action: "register",
-        chipID: idFromURL,
+        chipID: chipID,
         userKey: userKey,
         alias: document.getElementById('alias').value.trim(),
         fullName: document.getElementById('fullName').value.trim(),
@@ -395,8 +410,10 @@ document.getElementById('regForm').onsubmit = async (e) => {
         showStatus('success', 'Chip Linked!', 'Welcome to the festival.');
         setTimeout(() => {
             localStorage.setItem('danceAppUser', JSON.stringify({
-                chipID: idFromURL, alias: payload.alias, userKey: userKey, role: payload.role
+                chipID: chipID, alias: payload.alias, userKey: userKey, role: payload.role
             }));
+            // Cleanup pending ID
+            localStorage.removeItem('pendingChipId');
             location.reload();
         }, 2000);
     } catch (error) {
@@ -661,6 +678,7 @@ window.unlinkChip = function () {
             localStorage.removeItem('danceAppUser');
             localStorage.removeItem('frozenStats'); // Clear stats on unlink
             localStorage.removeItem('lastFeedback'); // Clear feedback on unlink
+            localStorage.removeItem('pendingChipId'); // Clear any pending ID
             location.reload();
         }
     });

@@ -70,7 +70,7 @@
         <div id="dancer-view" class="hidden">
             <!-- Festival Banner -->
             <div style="margin-bottom: 15px;">
-                <img src="assets/kwanza_banner.jpeg" alt="Festival Banner"
+                <img src="assets/kwanza_banner.jpeg" alt="Festival Banner" loading="lazy"
                     style="width: 100%; height: auto; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: block;">
             </div>
 
@@ -212,6 +212,14 @@
                 </div>
             </div>
         </div>
+
+        <script>
+            // Register Service Worker for caching and launch_handler support.
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/nfc-tap-app/sw.js')
+                    .catch((err) => console.warn('SW registration failed:', err));
+            }
+        </script>
 </body>
 
 </html>

@@ -100,19 +100,31 @@ function confirmAction(title, msg, confirmText = "Confirm", cancelText = "Cancel
 /** --- DATA LOADING & REFRESH --- **/
 
 async function loadDancerView() {
-    // Show loading overlay
-    showStatus('loading', 'Loading Profile', 'Please wait...');
-
     const user = JSON.parse(localStorage.getItem('danceAppUser'));
     if (!user) return;
 
+    // ── STALE-WHILE-REVALIDATE ──────────────────────────────────────────────
+    // 1. Show cached data instantly so the user sees content immediately.
+    const cachedHistory = localStorage.getItem('cachedHistory');
+    if (cachedHistory) {
+        fullHistoryData = JSON.parse(cachedHistory);
+        document.getElementById('master-overlay').classList.add('hidden');
+        document.getElementById('displayName').innerText = user.alias;
+        renderHistoryTable(fullHistoryData);
+    } else {
+        // No cache yet — show loading overlay until network responds.
+        showStatus('loading', 'Loading Profile', 'Please wait...');
+    }
+
+    // 2. Fetch fresh data in background, update UI when ready.
     try {
         const resp = await fetch(`${WEB_APP_URL}?action=getHistory&id=${user.chipID}`);
         fullHistoryData = await resp.json();
 
-        // Hide overlay once done
-        document.getElementById('master-overlay').classList.add('hidden');
+        // Persist for next load.
+        localStorage.setItem('cachedHistory', JSON.stringify(fullHistoryData));
 
+        document.getElementById('master-overlay').classList.add('hidden');
         document.getElementById('displayName').innerText = user.alias;
         renderHistoryTable(fullHistoryData);
 
@@ -133,6 +145,116 @@ async function loadDancerView() {
         }
     } catch (e) {
         console.error("Failed to load view", e);
+        // If network fails but we have cache, that's fine — user already sees data.
+        if (!cachedHistory) {
+            showStatus('error', 'No Connection', 'Could not load your profile.');
+        }
+    }
+
+    // 3. Start Web NFC scanning (Android Chrome only — silently ignored on iOS).
+    startNfcScanning();
+}
+
+/** --- WEB NFC SCANNING (Android Chrome) --- **/
+
+/**
+ * Extracts the chip ID from the raw URL string stored on the NFC chip.
+ * Handles both full URLs: "https://…?id=XXXX" and plain id strings.
+ */
+function extractIdFromNfcPayload(payload) {
+    try {
+        // The chip stores a full URL — parse it like a URL.
+        const url = payload.startsWith('http') ? new URL(payload) : new URL('https://x.x?' + payload);
+        return url.searchParams.get('id') || null;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Shows or hides the NFC-ready indicator in the dancer view.
+ */
+function showNfcScanIndicator(active) {
+    let indicator = document.getElementById('nfc-scan-indicator');
+    if (!indicator) {
+        // Create it dynamically so no HTML change needed.
+        indicator = document.createElement('div');
+        indicator.id = 'nfc-scan-indicator';
+        indicator.style.cssText = [
+            'position:fixed', 'bottom:20px', 'right:20px',
+            'background:var(--primary)', 'color:#fff',
+            'padding:8px 14px', 'border-radius:20px',
+            'font-size:0.75rem', 'font-weight:bold',
+            'box-shadow:0 2px 10px rgba(0,0,0,0.4)',
+            'opacity:0', 'transition:opacity 0.4s',
+            'pointer-events:none', 'z-index:1000'
+        ].join(';');
+        indicator.innerText = '📡 NFC Ready';
+        document.body.appendChild(indicator);
+    }
+    // Fade in/out.
+    indicator.style.opacity = active ? '1' : '0';
+}
+
+/**
+ * Starts the Web NFC reader session.
+ * Only available on Android Chrome — silently skipped on iOS and unsupported browsers.
+ * Once permission is granted by the user (one-time prompt), subsequent taps are
+ * handled entirely in-page: no OS notification, no new tab.
+ */
+async function startNfcScanning() {
+    if (!('NDEFReader' in window)) {
+        // iOS or unsupported browser — URL-tap fallback handles it.
+        return;
+    }
+
+    try {
+        const ndef = new NDEFReader();
+        await ndef.scan(); // Shows a one-time permission prompt to the user.
+
+        showNfcScanIndicator(true);
+
+        ndef.onreading = ({ message }) => {
+            for (const record of message.records) {
+                let payload = '';
+                try {
+                    // URL records use the URL record type.
+                    if (record.recordType === 'url') {
+                        payload = new TextDecoder().decode(record.data);
+                    } else if (record.recordType === 'text') {
+                        payload = new TextDecoder().decode(record.data);
+                    } else {
+                        continue;
+                    }
+                } catch { continue; }
+
+                const chipId = extractIdFromNfcPayload(payload);
+                if (!chipId) continue;
+
+                const savedUser = JSON.parse(localStorage.getItem('danceAppUser'));
+
+                if (savedUser && savedUser.chipID) {
+                    if (chipId !== savedUser.chipID) {
+                        // Logged-in user scanned a different chip → log a dance.
+                        handleAutoLog(savedUser.chipID, chipId);
+                    }
+                    // Ignore tapping your own chip.
+                } else {
+                    // Not logged in → check if new or returning user.
+                    checkUserInSystem(chipId);
+                }
+                break; // Only process the first valid record.
+            }
+        };
+
+        ndef.onreadingerror = () => {
+            console.warn('NFC read error — chip may not be NDEF formatted.');
+        };
+
+    } catch (err) {
+        // User denied permission or scan failed — gracefully ignore.
+        console.warn('Web NFC unavailable or permission denied:', err);
+        showNfcScanIndicator(false);
     }
 }
 
@@ -676,9 +798,10 @@ window.unlinkChip = function () {
     confirmAction("Unlink Chip?", "You will need to scan your chip again to log in.", "Unlink").then(choice => {
         if (choice) {
             localStorage.removeItem('danceAppUser');
-            localStorage.removeItem('frozenStats'); // Clear stats on unlink
-            localStorage.removeItem('lastFeedback'); // Clear feedback on unlink
+            localStorage.removeItem('frozenStats');    // Clear stats on unlink
+            localStorage.removeItem('lastFeedback');   // Clear feedback on unlink
             localStorage.removeItem('pendingChipId'); // Clear any pending ID
+            localStorage.removeItem('cachedHistory'); // Clear history cache on unlink
             location.reload();
         }
     });

@@ -7,6 +7,13 @@ const urlParams = new URLSearchParams(window.location.search);
 const idFromURL = urlParams.get('id');
 let fullHistoryData = [];
 
+// ── INSTALL PROMPT (captured early, before the browser fires it) ────────────
+let _deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault(); // Stop the default Chrome mini-bar from appearing.
+    _deferredInstallPrompt = e; // Save it so we can trigger it from our own UI.
+});
+
 window.onload = async () => {
     const savedUser = JSON.parse(localStorage.getItem('danceAppUser'));
 
@@ -38,7 +45,80 @@ window.onload = async () => {
         document.getElementById('scan-status').innerText = "Please tap your NFC chip to begin.";
     }
     validateFormState();
+    showInstallPrompt();
 };
+
+/** --- INSTALL TO HOME SCREEN PROMPT --- **/
+
+/**
+ * Shows a platform-appropriate install banner if:
+ * - The app is NOT already running as a standalone PWA
+ * - The user hasn't permanently dismissed it
+ */
+function showInstallPrompt() {
+    // Already installed as PWA — no need to prompt.
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) return;
+    // User dismissed it before — respect that.
+    if (sessionStorage.getItem('installDismissed')) return;
+
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
+
+    if (!isIOS && !isAndroid) return; // Desktop — no prompt needed.
+
+    // Build the banner
+    const banner = document.createElement('div');
+    banner.id = 'install-banner';
+    banner.style.cssText = [
+        'position:fixed', 'bottom:0', 'left:0', 'right:0',
+        'background:#1e293b', 'color:#fff',
+        'padding:14px 18px', 'z-index:2000',
+        'display:flex', 'align-items:center', 'gap:12px',
+        'box-shadow:0 -3px 16px rgba(0,0,0,0.4)',
+        'border-top:2px solid var(--primary)',
+        'font-size:0.82rem', 'line-height:1.4'
+    ].join(';');
+
+    const icon = isIOS ? '📲' : '📲';
+    const instructions = isIOS
+        ? `<strong style="color:var(--primary);font-size:0.9rem;">Add to Home Screen</strong><br>
+           Tap <strong>⎙ Share</strong> then <strong>"Add to Home Screen"</strong> for the best experience — no notifications, one tab only.`
+        : `<strong style="color:var(--primary);font-size:0.9rem;">Install App</strong><br>
+           Install the app for the best experience — no notifications, seamless NFC.`;
+
+    banner.innerHTML = `
+        <span style="font-size:1.6rem;flex-shrink:0;">${icon}</span>
+        <div style="flex:1;">${instructions}</div>
+        <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+            ${isAndroid ? `<button id="install-accept-btn" style="background:var(--primary);color:#fff;border:none;border-radius:8px;padding:7px 12px;font-weight:bold;font-size:0.78rem;cursor:pointer;">Install</button>` : ''}
+            <button id="install-dismiss-btn" style="background:transparent;color:#888;border:none;font-size:0.75rem;cursor:pointer;padding:4px;">Maybe later</button>
+        </div>`;
+
+    document.body.appendChild(banner);
+
+    // Android: trigger native install prompt on button tap
+    const acceptBtn = document.getElementById('install-accept-btn');
+    if (acceptBtn && _deferredInstallPrompt) {
+        acceptBtn.addEventListener('click', async () => {
+            banner.remove();
+            _deferredInstallPrompt.prompt();
+            const { outcome } = await _deferredInstallPrompt.userChoice;
+            if (outcome === 'accepted') {
+                sessionStorage.setItem('installDismissed', '1');
+            }
+            _deferredInstallPrompt = null;
+        });
+    } else if (acceptBtn) {
+        // beforeinstallprompt didn't fire (not eligible yet) — hide the install button
+        acceptBtn.style.display = 'none';
+    }
+
+    // Dismiss permanently
+    document.getElementById('install-dismiss-btn').addEventListener('click', () => {
+        banner.remove();
+        sessionStorage.setItem('installDismissed', '1');
+    });
+}
 
 /** --- MASTER UI CONTROLLER (OVERLAYS) --- **/
 

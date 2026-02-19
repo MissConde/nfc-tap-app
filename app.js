@@ -7,6 +7,13 @@ const urlParams = new URLSearchParams(window.location.search);
 const idFromURL = urlParams.get('id');
 let fullHistoryData = [];
 
+// ── INSTALL PROMPT (captured early, before the browser fires it) ────────────
+let _deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault(); // Stop the default Chrome mini-bar from appearing.
+    _deferredInstallPrompt = e; // Save it so we can trigger it from our own UI.
+});
+
 window.onload = async () => {
     const savedUser = JSON.parse(localStorage.getItem('danceAppUser'));
 
@@ -38,7 +45,80 @@ window.onload = async () => {
         document.getElementById('scan-status').innerText = "Please tap your NFC chip to begin.";
     }
     validateFormState();
+    showInstallPrompt();
 };
+
+/** --- INSTALL TO HOME SCREEN PROMPT --- **/
+
+/**
+ * Shows a platform-appropriate install banner if:
+ * - The app is NOT already running as a standalone PWA
+ * - The user hasn't permanently dismissed it
+ */
+function showInstallPrompt() {
+    // Already installed as PWA — no need to prompt.
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) return;
+    // User dismissed it before — respect that.
+    if (sessionStorage.getItem('installDismissed')) return;
+
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
+
+    if (!isIOS && !isAndroid) return; // Desktop — no prompt needed.
+
+    // Build the banner
+    const banner = document.createElement('div');
+    banner.id = 'install-banner';
+    banner.style.cssText = [
+        'position:fixed', 'bottom:0', 'left:0', 'right:0',
+        'background:#1e293b', 'color:#fff',
+        'padding:14px 18px', 'z-index:2000',
+        'display:flex', 'align-items:center', 'gap:12px',
+        'box-shadow:0 -3px 16px rgba(0,0,0,0.4)',
+        'border-top:2px solid var(--primary)',
+        'font-size:0.82rem', 'line-height:1.4'
+    ].join(';');
+
+    const icon = isIOS ? '📲' : '📲';
+    const instructions = isIOS
+        ? `<strong style="color:var(--primary);font-size:0.9rem;">Add to Home Screen</strong><br>
+           Tap <strong>⎙ Share</strong> then <strong>"Add to Home Screen"</strong> for the best experience — no notifications, one tab only.`
+        : `<strong style="color:var(--primary);font-size:0.9rem;">Install App</strong><br>
+           Install the app for the best experience — no notifications, seamless NFC.`;
+
+    banner.innerHTML = `
+        <span style="font-size:1.6rem;flex-shrink:0;">${icon}</span>
+        <div style="flex:1;">${instructions}</div>
+        <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+            ${isAndroid ? `<button id="install-accept-btn" style="background:var(--primary);color:#fff;border:none;border-radius:8px;padding:7px 12px;font-weight:bold;font-size:0.78rem;cursor:pointer;">Install</button>` : ''}
+            <button id="install-dismiss-btn" style="background:transparent;color:#888;border:none;font-size:0.75rem;cursor:pointer;padding:4px;">Maybe later</button>
+        </div>`;
+
+    document.body.appendChild(banner);
+
+    // Android: trigger native install prompt on button tap
+    const acceptBtn = document.getElementById('install-accept-btn');
+    if (acceptBtn && _deferredInstallPrompt) {
+        acceptBtn.addEventListener('click', async () => {
+            banner.remove();
+            _deferredInstallPrompt.prompt();
+            const { outcome } = await _deferredInstallPrompt.userChoice;
+            if (outcome === 'accepted') {
+                sessionStorage.setItem('installDismissed', '1');
+            }
+            _deferredInstallPrompt = null;
+        });
+    } else if (acceptBtn) {
+        // beforeinstallprompt didn't fire (not eligible yet) — hide the install button
+        acceptBtn.style.display = 'none';
+    }
+
+    // Dismiss permanently
+    document.getElementById('install-dismiss-btn').addEventListener('click', () => {
+        banner.remove();
+        sessionStorage.setItem('installDismissed', '1');
+    });
+}
 
 /** --- MASTER UI CONTROLLER (OVERLAYS) --- **/
 
@@ -100,19 +180,31 @@ function confirmAction(title, msg, confirmText = "Confirm", cancelText = "Cancel
 /** --- DATA LOADING & REFRESH --- **/
 
 async function loadDancerView() {
-    // Show loading overlay
-    showStatus('loading', 'Loading Profile', 'Please wait...');
-
     const user = JSON.parse(localStorage.getItem('danceAppUser'));
     if (!user) return;
 
+    // ── STALE-WHILE-REVALIDATE ──────────────────────────────────────────────
+    // 1. Show cached data instantly so the user sees content immediately.
+    const cachedHistory = localStorage.getItem('cachedHistory');
+    if (cachedHistory) {
+        fullHistoryData = JSON.parse(cachedHistory);
+        document.getElementById('master-overlay').classList.add('hidden');
+        document.getElementById('displayName').innerText = user.alias;
+        renderHistoryTable(fullHistoryData);
+    } else {
+        // No cache yet — show loading overlay until network responds.
+        showStatus('loading', 'Loading Profile', 'Please wait...');
+    }
+
+    // 2. Fetch fresh data in background, update UI when ready.
     try {
         const resp = await fetch(`${WEB_APP_URL}?action=getHistory&id=${user.chipID}`);
         fullHistoryData = await resp.json();
 
-        // Hide overlay once done
-        document.getElementById('master-overlay').classList.add('hidden');
+        // Persist for next load.
+        localStorage.setItem('cachedHistory', JSON.stringify(fullHistoryData));
 
+        document.getElementById('master-overlay').classList.add('hidden');
         document.getElementById('displayName').innerText = user.alias;
         renderHistoryTable(fullHistoryData);
 
@@ -133,6 +225,116 @@ async function loadDancerView() {
         }
     } catch (e) {
         console.error("Failed to load view", e);
+        // If network fails but we have cache, that's fine — user already sees data.
+        if (!cachedHistory) {
+            showStatus('error', 'No Connection', 'Could not load your profile.');
+        }
+    }
+
+    // 3. Start Web NFC scanning (Android Chrome only — silently ignored on iOS).
+    startNfcScanning();
+}
+
+/** --- WEB NFC SCANNING (Android Chrome) --- **/
+
+/**
+ * Extracts the chip ID from the raw URL string stored on the NFC chip.
+ * Handles both full URLs: "https://…?id=XXXX" and plain id strings.
+ */
+function extractIdFromNfcPayload(payload) {
+    try {
+        // The chip stores a full URL — parse it like a URL.
+        const url = payload.startsWith('http') ? new URL(payload) : new URL('https://x.x?' + payload);
+        return url.searchParams.get('id') || null;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Shows or hides the NFC-ready indicator in the dancer view.
+ */
+function showNfcScanIndicator(active) {
+    let indicator = document.getElementById('nfc-scan-indicator');
+    if (!indicator) {
+        // Create it dynamically so no HTML change needed.
+        indicator = document.createElement('div');
+        indicator.id = 'nfc-scan-indicator';
+        indicator.style.cssText = [
+            'position:fixed', 'bottom:20px', 'right:20px',
+            'background:var(--primary)', 'color:#fff',
+            'padding:8px 14px', 'border-radius:20px',
+            'font-size:0.75rem', 'font-weight:bold',
+            'box-shadow:0 2px 10px rgba(0,0,0,0.4)',
+            'opacity:0', 'transition:opacity 0.4s',
+            'pointer-events:none', 'z-index:1000'
+        ].join(';');
+        indicator.innerText = '📡 NFC Ready';
+        document.body.appendChild(indicator);
+    }
+    // Fade in/out.
+    indicator.style.opacity = active ? '1' : '0';
+}
+
+/**
+ * Starts the Web NFC reader session.
+ * Only available on Android Chrome — silently skipped on iOS and unsupported browsers.
+ * Once permission is granted by the user (one-time prompt), subsequent taps are
+ * handled entirely in-page: no OS notification, no new tab.
+ */
+async function startNfcScanning() {
+    if (!('NDEFReader' in window)) {
+        // iOS or unsupported browser — URL-tap fallback handles it.
+        return;
+    }
+
+    try {
+        const ndef = new NDEFReader();
+        await ndef.scan(); // Shows a one-time permission prompt to the user.
+
+        showNfcScanIndicator(true);
+
+        ndef.onreading = ({ message }) => {
+            for (const record of message.records) {
+                let payload = '';
+                try {
+                    // URL records use the URL record type.
+                    if (record.recordType === 'url') {
+                        payload = new TextDecoder().decode(record.data);
+                    } else if (record.recordType === 'text') {
+                        payload = new TextDecoder().decode(record.data);
+                    } else {
+                        continue;
+                    }
+                } catch { continue; }
+
+                const chipId = extractIdFromNfcPayload(payload);
+                if (!chipId) continue;
+
+                const savedUser = JSON.parse(localStorage.getItem('danceAppUser'));
+
+                if (savedUser && savedUser.chipID) {
+                    if (chipId !== savedUser.chipID) {
+                        // Logged-in user scanned a different chip → log a dance.
+                        handleAutoLog(savedUser.chipID, chipId);
+                    }
+                    // Ignore tapping your own chip.
+                } else {
+                    // Not logged in → check if new or returning user.
+                    checkUserInSystem(chipId);
+                }
+                break; // Only process the first valid record.
+            }
+        };
+
+        ndef.onreadingerror = () => {
+            console.warn('NFC read error — chip may not be NDEF formatted.');
+        };
+
+    } catch (err) {
+        // User denied permission or scan failed — gracefully ignore.
+        console.warn('Web NFC unavailable or permission denied:', err);
+        showNfcScanIndicator(false);
     }
 }
 
@@ -676,9 +878,10 @@ window.unlinkChip = function () {
     confirmAction("Unlink Chip?", "You will need to scan your chip again to log in.", "Unlink").then(choice => {
         if (choice) {
             localStorage.removeItem('danceAppUser');
-            localStorage.removeItem('frozenStats'); // Clear stats on unlink
-            localStorage.removeItem('lastFeedback'); // Clear feedback on unlink
+            localStorage.removeItem('frozenStats');    // Clear stats on unlink
+            localStorage.removeItem('lastFeedback');   // Clear feedback on unlink
             localStorage.removeItem('pendingChipId'); // Clear any pending ID
+            localStorage.removeItem('cachedHistory'); // Clear history cache on unlink
             location.reload();
         }
     });

@@ -14,8 +14,52 @@ window.addEventListener('beforeinstallprompt', (e) => {
     _deferredInstallPrompt = e; // Save it so we can trigger it from our own UI.
 });
 
+// ── PWA LAUNCH QUEUE (Android Chrome) ────────────────────────────────────────
+// If the PWA is already open in the background, this intercepts the NFC tap URL
+// and prevents a new tab from opening (requires "focus-existing" in manifest).
+if ('launchQueue' in window) {
+    window.launchQueue.setConsumer((launchParams) => {
+        if (!launchParams.targetURL) return;
+        const targetUrl = new URL(launchParams.targetURL);
+        const tapId = targetUrl.searchParams.get('id');
+
+        if (tapId) {
+            const savedUser = JSON.parse(localStorage.getItem('danceAppUser'));
+            if (savedUser && savedUser.chipID) {
+                if (tapId !== savedUser.chipID) {
+                    // Logged in user scanned a partner
+                    handleAutoLog(savedUser.chipID, tapId);
+                }
+            } else {
+                // Not logged in -> trigger login/reg flow
+                checkUserInSystem(tapId);
+            }
+        }
+    });
+}
+
 window.onload = async () => {
     const savedUser = JSON.parse(localStorage.getItem('danceAppUser'));
+
+    // --- iOS AUTOMATIC SYNC ---
+    // If the URL contains a sync_token, the user added the app to their home screen
+    // from a browser session where they were already logged in. 
+    // We immediately save their session to the PWA's isolated storage.
+    const syncToken = urlParams.get('sync_token');
+    const syncAlias = urlParams.get('sync_alias');
+    const syncChip = urlParams.get('sync_chip');
+
+    if (syncToken && syncAlias && syncChip && !savedUser) {
+        localStorage.setItem('danceAppUser', JSON.stringify({
+            chipID: syncChip,
+            alias: syncAlias,
+            userKey: syncToken
+        }));
+        // Clean URL so they don't share their token if they copy the URL later
+        window.history.replaceState({}, document.title, window.location.pathname + '?id=' + syncChip);
+        location.reload();
+        return;
+    }
 
     // --- PERSISTENCE FIX ---
     // 1. If ID is in URL (Safari/Browser), save it immediately.
@@ -33,7 +77,20 @@ window.onload = async () => {
 
         // Check if we scanned a DIFFERENT chip while logged in
         if (activeChipId && activeChipId !== savedUser.chipID) {
-            handleAutoLog(savedUser.chipID, activeChipId);
+
+            // --- AUTO CLOSE BROWSER TABS (iOS Fix) ---
+            // If they are NOT in standalone (PWA) mode, they are in a browser tab.
+            // On iOS, every tap opens a new tab. We want to auto-close this tab
+            // after logging the dance so they don't end up with 50 tabs.
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+            if (!isStandalone) {
+                // We are in a browser tab. Log it, show a success screen, and auto-close.
+                handleAutoLogWithAutoClose(savedUser.chipID, activeChipId);
+            } else {
+                // We are in the PWA (or Android launchQueue). Just log normally.
+                handleAutoLog(savedUser.chipID, activeChipId);
+            }
         }
     } else if (activeChipId) {
         // --- NEW CHIP DETECTED (Browser OR PWA) ---
@@ -69,29 +126,46 @@ function showInstallPrompt() {
     // Build the banner
     const banner = document.createElement('div');
     banner.id = 'install-banner';
+    // --- NON-BLOCKING BOTTOM BANNER CSS ---
     banner.style.cssText = [
-        'position:fixed', 'bottom:0', 'left:0', 'right:0',
-        'background:#1e293b', 'color:#fff',
-        'padding:14px 18px', 'z-index:2000',
+        'position:fixed', 'bottom:20px', 'left:5%', 'right:5%', 'width:90%',
+        'background:rgba(30, 41, 59, 0.95)', 'color:#fff',
+        'padding:12px 16px', 'z-index:2000', 'border-radius:12px',
         'display:flex', 'align-items:center', 'gap:12px',
-        'box-shadow:0 -3px 16px rgba(0,0,0,0.4)',
-        'border-top:2px solid var(--primary)',
-        'font-size:0.82rem', 'line-height:1.4'
+        'box-shadow:0 8px 32px rgba(0,0,0,0.5)',
+        'border:1px solid rgba(255,255,255,0.1)',
+        'backdrop-filter:blur(10px)', '-webkit-backdrop-filter:blur(10px)',
+        'font-size:0.85rem', 'line-height:1.4',
+        'animation: slideUp 0.5s ease-out forwards'
     ].join(';');
 
     const icon = isIOS ? '📲' : '📲';
+
+    // Inject the user's sync token into the iOS instructions so when they "Add to Home Screen",
+    // the PWA opens with their identity automatically embedded.
+    let installUrl = window.location.href;
+    const savedForSync = JSON.parse(localStorage.getItem('danceAppUser'));
+    if (savedForSync && isIOS) {
+        const syncUrl = new URL(window.location.href);
+        syncUrl.searchParams.set('sync_token', savedForSync.userKey || '');
+        syncUrl.searchParams.set('sync_alias', savedForSync.alias || '');
+        syncUrl.searchParams.set('sync_chip', savedForSync.chipID || '');
+        installUrl = syncUrl.href;
+    }
+
     const instructions = isIOS
-        ? `<strong style="color:var(--primary);font-size:0.9rem;">Add to Home Screen</strong><br>
-           Tap <strong>⎙ Share</strong> then <strong>"Add to Home Screen"</strong> for the best experience — no notifications, one tab only.`
-        : `<strong style="color:var(--primary);font-size:0.9rem;">Install App</strong><br>
-           Install the app for the best experience — no notifications, seamless NFC.`;
+        ? `<strong style="color:var(--primary);font-size:0.95rem;">Add App to Home Screen</strong><br>
+           Tap <strong style="color:#fff;">⎙ Share</strong> below, then <strong style="color:#fff;">Add to Home Screen</strong>.<br>
+           <small style="color:#aaa;">(This securely transfers your login to the app)</small>`
+        : `<strong style="color:var(--primary);font-size:0.95rem;">Install Dance Tracker</strong><br>
+           Install the app for instant NFC scanning without new tabs opening.`;
 
     banner.innerHTML = `
-        <span style="font-size:1.6rem;flex-shrink:0;">${icon}</span>
+        <span style="font-size:1.8rem;flex-shrink:0;">${icon}</span>
         <div style="flex:1;">${instructions}</div>
-        <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
-            ${isAndroid ? `<button id="install-accept-btn" style="background:var(--primary);color:#fff;border:none;border-radius:8px;padding:7px 12px;font-weight:bold;font-size:0.78rem;cursor:pointer;">Install</button>` : ''}
-            <button id="install-dismiss-btn" style="background:transparent;color:#888;border:none;font-size:0.75rem;cursor:pointer;padding:4px;">Maybe later</button>
+        <div style="display:flex;flex-direction:column;gap:8px;flex-shrink:0;">
+            ${isAndroid ? `<button id="install-accept-btn" style="background:var(--primary);color:#fff;border:none;border-radius:20px;padding:8px 16px;font-weight:600;font-size:0.8rem;cursor:pointer;box-shadow:0 2px 8px rgba(255,0,85,0.4);">Install</button>` : ''}
+            <button id="install-dismiss-btn" style="background:transparent;color:#bbb;border:none;font-size:0.75rem;cursor:pointer;padding:4px;">Dismiss</button>
         </div>`;
 
     document.body.appendChild(banner);
@@ -111,6 +185,12 @@ function showInstallPrompt() {
     } else if (acceptBtn) {
         // beforeinstallprompt didn't fire (not eligible yet) — hide the install button
         acceptBtn.style.display = 'none';
+    }
+
+    // iOS users need to be explicitly on the URL with the sync tokens before they tap Share
+    if (isIOS && savedForSync && !window.location.search.includes('sync_token')) {
+        // Auto-redirect them once to append the tokens to the URL bar so "Share" captures it
+        window.history.replaceState({}, document.title, installUrl);
     }
 
     // Dismiss permanently
@@ -389,6 +469,67 @@ async function handleAutoLog(myID, partnerID) {
             navigator.vibrate([50, 50, 50, 50, 50]);
         }
         showStatus('error', 'Tap Failed', 'Check your internet connection.');
+    }
+}
+
+/**
+ * Specifically for iOS Safari/Chrome instances that get opened by a background NFC tap.
+ * Logs the dance, displays a full-screen "Done" message, and attempts to auto-close the tab.
+ */
+async function handleAutoLogWithAutoClose(myID, partnerID) {
+    // Show a full-screen takeover immediately so they know it's working
+    showView('auto-close-view');
+    document.getElementById('auto-close-status').innerText = "Logging dance...";
+
+    try {
+        const resp = await fetch(`${WEB_APP_URL}?action=logDance&scannerId=${myID}&targetId=${partnerID}`);
+        const result = await resp.json();
+
+        if (result.status === "Unregistered") {
+            document.getElementById('auto-close-view').innerHTML = `
+                <h2>❌ Unknown Chip</h2>
+                <p>This chip hasn't been registered yet.</p>
+                <button class="primary-btn" onclick="window.close()" style="margin-top:20px;">Close Tab</button>
+            `;
+        } else if (result.status === "Confirmed") {
+            document.getElementById('auto-close-view').innerHTML = `
+                <div style="font-size:4rem; margin-bottom:10px;">🏆</div>
+                <h2 style="color:var(--success);">Dance Confirmed!</h2>
+                <p style="color:var(--text-secondary); margin-top:10px;">Double-tap handshake complete.</p>
+                <p style="color:var(--text-secondary); font-size: 0.8rem;">You can safely close this tab or return to the app.</p>
+                <button class="primary-btn" onclick="window.close()" style="margin-top:20px;">Close Tab</button>
+            `;
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+            setTimeout(() => window.close(), 2500);
+        } else if (result.status && result.status.includes("cooldown") || result.error) {
+            // Handle 10-minute cooldown or other backend errors
+            document.getElementById('auto-close-view').innerHTML = `
+                <div style="font-size:4rem; margin-bottom:10px;">⏳</div>
+                <h2 style="color:var(--warning);">Too Soon!</h2>
+                <p style="color:var(--text-secondary); margin-top:10px;">Wait 10 minutes before tapping the same person.</p>
+                <button class="primary-btn" onclick="window.close()" style="margin-top:20px;">Close Tab</button>
+            `;
+            if (navigator.vibrate) navigator.vibrate([50, 50]);
+            setTimeout(() => window.close(), 3500);
+        } else {
+            // Default logged State (Waiting)
+            document.getElementById('auto-close-view').innerHTML = `
+                <div style="font-size:4rem; margin-bottom:10px;">✅</div>
+                <h2 style="color:var(--success);">Dance Logged!</h2>
+                <p style="color:var(--text-secondary); margin-top:10px;">Waiting for partner to scan back.</p>
+                <p style="color:var(--text-secondary); font-size: 0.8rem;">You can safely close this tab or return to the app.</p>
+                <button class="primary-btn" onclick="window.close()" style="margin-top:20px;">Close Tab</button>
+            `;
+            if (navigator.vibrate) navigator.vibrate(100);
+            setTimeout(() => window.close(), 2500);
+        }
+    } catch (e) {
+        document.getElementById('auto-close-view').innerHTML = `
+            <h2>❌ Network Error</h2>
+            <p>Could not connect to the server.</p>
+            <button class="primary-btn" onclick="window.close()" style="margin-top:20px;">Close Tab</button>
+        `;
+        if (navigator.vibrate) navigator.vibrate([50, 50, 50, 50, 50]);
     }
 }
 

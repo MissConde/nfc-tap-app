@@ -10,6 +10,7 @@
     <link rel="manifest" href="manifest.json">
 
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="assets/kwanza_icon_192.png">
 </head>
@@ -19,12 +20,16 @@
         <div id="scan-view" class="card">
             <h2>Welcome</h2>
             <p id="scan-status">Please tap your NFC chip to begin.</p>
-            <!-- <div style="margin-top: 30px; text-align: center;">
-                <a href="admin.html" style="color: var(--text-secondary); font-size: 0.75rem; text-decoration: none;">🔑
-                    Organizer
-                    Access</a>
-            </div> -->
         </div>
+
+        <!-- NEW BROWSER TAP UI (for when a tap opens a new tab) -->
+        <div id="auto-close-view" class="card hidden" style="text-align:center; padding: 40px 20px;">
+            <div id="icon-loading" style="margin-bottom:20px;">
+                <div class="spinner"></div>
+            </div>
+            <h2 id="auto-close-status">Logging dance...</h2>
+        </div>
+
         <div id="registration-view" class="card hidden">
             <h2>Dancer Profile</h2>
             <form id="regForm" novalidate>

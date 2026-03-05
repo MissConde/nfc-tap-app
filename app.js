@@ -38,6 +38,28 @@ if ('launchQueue' in window) {
     });
 }
 
+// Immediately invoke the user check so we don't wait for images/CSS to download.
+// --- PERSISTENCE FIX ---
+// 1. If ID is in URL (Safari/Browser), save it immediately.
+if (idFromURL) {
+    localStorage.setItem('pendingChipId', idFromURL);
+}
+
+// 2. Retrieve ID: Use URL first, fallback to pendingChipId (for PWA)
+const activeChipId = idFromURL || localStorage.getItem('pendingChipId');
+
+// Start the loading overlay instantly
+if (activeChipId) {
+    // Show a fast skeleton/loading state before the rest of the app boots
+    document.addEventListener("DOMContentLoaded", () => {
+        const savedUser = JSON.parse(localStorage.getItem('danceAppUser'));
+        if (!savedUser) {
+            showView('auto-close-view');
+            document.getElementById('auto-close-status').innerText = "Loading Profile...";
+        }
+    });
+}
+
 window.onload = async () => {
     const savedUser = JSON.parse(localStorage.getItem('danceAppUser'));
 
@@ -61,19 +83,13 @@ window.onload = async () => {
         return;
     }
 
-    // --- PERSISTENCE FIX ---
-    // 1. If ID is in URL (Safari/Browser), save it immediately.
-    if (idFromURL) {
-        localStorage.setItem('pendingChipId', idFromURL);
-    }
-
-    // 2. Retrieve ID: Use URL first, fallback to pendingChipId (for PWA)
-    const activeChipId = idFromURL || localStorage.getItem('pendingChipId');
-
     if (savedUser && savedUser.chipID) {
         // --- LOGGED IN ---
         showView('dancer-view');
         loadDancerView();
+
+        // Ensure install prompt only shows on the dashboard
+        showInstallPrompt();
 
         // Check if we scanned a DIFFERENT chip while logged in
         if (activeChipId && activeChipId !== savedUser.chipID) {
@@ -101,8 +117,19 @@ window.onload = async () => {
         showView('scan-view');
         document.getElementById('scan-status').innerText = "Please tap your NFC chip to begin.";
     }
+
     validateFormState();
-    showInstallPrompt();
+
+    // Listen for tab visibility changes (e.g. returning to the PWA after Safari auto-closes)
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+            const user = JSON.parse(localStorage.getItem('danceAppUser'));
+            if (user && user.chipID && !document.getElementById('dancer-view').classList.contains('hidden')) {
+                // Silently refresh stats in the background
+                loadDancerView(true);
+            }
+        }
+    });
 };
 
 /** --- INSTALL TO HOME SCREEN PROMPT --- **/
@@ -259,7 +286,8 @@ function confirmAction(title, msg, confirmText = "Confirm", cancelText = "Cancel
 
 /** --- DATA LOADING & REFRESH --- **/
 
-async function loadDancerView() {
+// `silent` parameter prevents loading overlays from flashing when background refreshing
+async function loadDancerView(silent = false) {
     const user = JSON.parse(localStorage.getItem('danceAppUser'));
     if (!user) return;
 
@@ -268,12 +296,12 @@ async function loadDancerView() {
     const cachedHistory = localStorage.getItem('cachedHistory');
     if (cachedHistory) {
         fullHistoryData = JSON.parse(cachedHistory);
-        document.getElementById('master-overlay').classList.add('hidden');
+        if (!silent) document.getElementById('master-overlay').classList.add('hidden');
         document.getElementById('displayName').innerText = user.alias;
         renderHistoryTable(fullHistoryData);
     } else {
         // No cache yet — show loading overlay until network responds.
-        showStatus('loading', 'Loading Profile', 'Please wait...');
+        if (!silent) showStatus('loading', 'Loading...', 'Please wait...');
     }
 
     // 2. Fetch fresh data in background, update UI when ready.
@@ -441,34 +469,76 @@ window.toggleHistory = function (forceHide = false) {
 /** --- DANCE INTERACTIONS --- **/
 
 async function handleAutoLog(myID, partnerID) {
+    // Show a native processing overlay during fetch
+    showView('android-success-view');
+    document.getElementById('android-success-icon').innerText = "⏳";
+    document.getElementById('android-success-title').innerText = "Logging dance...";
+    document.getElementById('android-success-title').style.color = "var(--text-primary)";
+    document.getElementById('android-success-msg').innerText = "Please wait.";
+
     try {
         const resp = await fetch(`${WEB_APP_URL}?action=logDance&scannerId=${myID}&targetId=${partnerID}`);
         const result = await resp.json();
 
         if (result.status === "Unregistered") {
-            showStatus('error', 'Unknown Chip', 'This chip is not linked to a dancer yet.');
+            document.getElementById('android-success-icon').innerText = "❌";
+            document.getElementById('android-success-title').innerText = "Unknown Chip";
+            document.getElementById('android-success-title').style.color = "var(--error)";
+            document.getElementById('android-success-msg').innerText = "This chip is not linked to a dancer yet.";
+
+            // Auto return after 3s
+            setTimeout(() => {
+                showView('dancer-view');
+            }, 3000);
+
         } else if (result.status === "Confirmed") {
-            showStatus('success', 'Dance Confirmed!', 'Double-tap handshake complete.');
+            document.getElementById('android-success-icon').innerText = "🏆";
+            document.getElementById('android-success-title').innerText = "Dance Confirmed!";
+            document.getElementById('android-success-title').style.color = "var(--success)";
+            document.getElementById('android-success-msg').innerText = "Double-tap handshake complete.";
             if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+
+            // Auto return to reload view
+            setTimeout(() => {
+                showView('dancer-view');
+                loadDancerView(true);
+            }, 2500);
+
+        } else if (result.status && result.status.includes("cooldown") || result.error) {
+            document.getElementById('android-success-icon').innerText = "⏳";
+            document.getElementById('android-success-title').innerText = "Too Soon!";
+            document.getElementById('android-success-title').style.color = "var(--warning)";
+            document.getElementById('android-success-msg').innerText = "Wait 10 minutes before tapping the same person.";
+            if (navigator.vibrate) navigator.vibrate([50, 50]);
+
+            setTimeout(() => {
+                showView('dancer-view');
+                loadDancerView(true);
+            }, 3500);
+
         } else {
-            showStatus('success', 'Dance Logged', 'Waiting for partner to scan back.');
-            // Single short pulse for "Logged but waiting"
-            if (navigator.vibrate) {
-                navigator.vibrate(100);
-            }
+            document.getElementById('android-success-icon').innerText = "✅";
+            document.getElementById('android-success-title').innerText = "Dance Logged!";
+            document.getElementById('android-success-title').style.color = "var(--success)";
+            document.getElementById('android-success-msg').innerText = "Waiting for partner to scan back.";
+            if (navigator.vibrate) navigator.vibrate(100);
+
+            setTimeout(() => {
+                showView('dancer-view');
+                loadDancerView(true);
+            }, 2500);
         }
 
-        // Only reload view if it was a valid interaction (not unregistered)
-        if (result.status !== "Unregistered") {
-            loadDancerView();
-        }
     } catch (e) {
-        // --- ERROR VIBRATION ---
-        // Three rapid short pulses for error
-        if (navigator.vibrate) {
-            navigator.vibrate([50, 50, 50, 50, 50]);
-        }
-        showStatus('error', 'Tap Failed', 'Check your internet connection.');
+        document.getElementById('android-success-icon').innerText = "❌";
+        document.getElementById('android-success-title').innerText = "Network Error";
+        document.getElementById('android-success-title').style.color = "var(--error)";
+        document.getElementById('android-success-msg').innerText = "Check your internet connection.";
+
+        if (navigator.vibrate) navigator.vibrate([50, 50, 50, 50, 50]);
+        setTimeout(() => {
+            showView('dancer-view');
+        }, 3000);
     }
 }
 
@@ -1023,6 +1093,11 @@ window.unlinkChip = function () {
             localStorage.removeItem('lastFeedback');   // Clear feedback on unlink
             localStorage.removeItem('pendingChipId'); // Clear any pending ID
             localStorage.removeItem('cachedHistory'); // Clear history cache on unlink
+
+            // BUGFIX: Wipe the URL cleanly before reloading so it doesn't trigger a new scan
+            // in case the user clicked Unlink while still on a URL with an ?id parameter.
+            window.history.replaceState({}, document.title, window.location.pathname);
+
             location.reload();
         }
     });

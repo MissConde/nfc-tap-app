@@ -55,7 +55,7 @@ if (activeChipId) {
         const savedUser = JSON.parse(localStorage.getItem('danceAppUser'));
         if (!savedUser) {
             showView('auto-close-view');
-            document.getElementById('auto-close-status').innerText = "Loading Profile...";
+            document.getElementById('auto-close-status').innerText = "Loading...";
         }
     });
 }

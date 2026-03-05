@@ -88,9 +88,6 @@ window.onload = async () => {
         showView('dancer-view');
         loadDancerView();
 
-        // Ensure install prompt only shows on the dashboard
-        showInstallPrompt();
-
         // Check if we scanned a DIFFERENT chip while logged in
         if (activeChipId && activeChipId !== savedUser.chipID) {
 
@@ -107,6 +104,10 @@ window.onload = async () => {
                 // We are in the PWA (or Android launchQueue). Just log normally.
                 handleAutoLog(savedUser.chipID, activeChipId);
             }
+        } else {
+            // Only show the install prompt when they are staying on the dashboard
+            // (not when we're about to switch to auto-close or auto-log views)
+            showInstallPrompt();
         }
     } else if (activeChipId) {
         // --- NEW CHIP DETECTED (Browser OR PWA) ---
@@ -144,6 +145,11 @@ function showInstallPrompt() {
     if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) return;
     // User dismissed it before — respect that.
     if (sessionStorage.getItem('installDismissed')) return;
+    // Only show if the user is fully logged in and on the dashboard
+    const user = JSON.parse(localStorage.getItem('danceAppUser'));
+    if (!user || !user.chipID) return;
+    const dancerView = document.getElementById('dancer-view');
+    if (!dancerView || dancerView.classList.contains('hidden')) return;
 
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const isAndroid = /Android/.test(navigator.userAgent);
@@ -327,8 +333,11 @@ async function loadDancerView(silent = false) {
             document.getElementById('stats-content').classList.remove('hidden');
             calculateAndDisplayStats();
 
-            // Auto-collapse history if unlocked and show toggle button
-            toggleHistory(true);
+            // Only auto-collapse history on the FIRST load, not on refreshes
+            if (!window._historyInitialized) {
+                toggleHistory(true);
+                window._historyInitialized = true;
+            }
             document.getElementById('toggle-history-btn').classList.remove('hidden');
         }
     } catch (e) {
@@ -1026,7 +1035,7 @@ document.getElementById('feedbackForm').onsubmit = async (e) => {
 /** --- UTILS --- **/
 
 function showView(viewId) {
-    ['scan-view', 'registration-view', 'dancer-view', 'organizer-view'].forEach(id => {
+    ['scan-view', 'registration-view', 'dancer-view', 'organizer-view', 'auto-close-view', 'android-success-view'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
     });

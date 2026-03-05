@@ -6,7 +6,7 @@
 // One thing to note for deployment: When you update sw.js in the future, 
 // bump CACHE_VERSION from v1 to v2 etc. — that's how the old cache gets cleared on users' devices automatically.
 
-const CACHE_VERSION = 'dance-tracker-v1';
+const CACHE_VERSION = 'dance-tracker-v2';
 const STATIC_ASSETS = [
   '/nfc-tap-app/index.html',
   '/nfc-tap-app/style.css',

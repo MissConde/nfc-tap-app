@@ -785,6 +785,7 @@ async function checkUserInSystem(id) {
                 }
             });
         } else {
+            document.getElementById('master-overlay').classList.add('hidden');
             showView('registration-view');
         }
     } catch (e) {

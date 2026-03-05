@@ -48,18 +48,6 @@ if (idFromURL) {
 // 2. Retrieve ID: Use URL first, fallback to pendingChipId (for PWA)
 const activeChipId = idFromURL || localStorage.getItem('pendingChipId');
 
-// Start the loading overlay instantly
-if (activeChipId) {
-    // Show a fast skeleton/loading state before the rest of the app boots
-    document.addEventListener("DOMContentLoaded", () => {
-        const savedUser = JSON.parse(localStorage.getItem('danceAppUser'));
-        if (!savedUser) {
-            showView('auto-close-view');
-            document.getElementById('auto-close-status').innerText = "Loading...";
-        }
-    });
-}
-
 window.onload = async () => {
     const savedUser = JSON.parse(localStorage.getItem('danceAppUser'));
 
@@ -111,7 +99,8 @@ window.onload = async () => {
         }
     } else if (activeChipId) {
         // --- NEW CHIP DETECTED (Browser OR PWA) ---
-        // Use the persistent ID to triggering the flow
+        // Show a single clean loading state while we check the server
+        showStatus('loading', 'Loading...', 'Please wait.');
         checkUserInSystem(activeChipId);
     } else {
         // --- PROMPT SCAN ---
@@ -613,6 +602,7 @@ async function handleAutoLogWithAutoClose(myID, partnerID) {
 }
 
 window.confirmDanceManually = async function (rowId) {
+    showStatus('loading', 'Confirming...', 'Please wait.');
     try {
         await fetch(`${WEB_APP_URL}?action=confirmManual&rowId=${rowId}`);
         showStatus('success', 'Confirmed', 'Dance added to your history.');
@@ -625,6 +615,7 @@ window.confirmDanceManually = async function (rowId) {
 async function cancelDance(rowId) {
     const confirmed = await confirmAction("Delete Log?", "This will remove the pending dance from your history.", "Delete");
     if (confirmed) {
+        showStatus('loading', 'Deleting...', 'Please wait.');
         try {
             await fetch(`${WEB_APP_URL}?action=cancelDance&rowId=${rowId}`);
             showStatus('success', 'Deleted', 'Log removed.');
@@ -772,13 +763,13 @@ async function checkUserInSystem(id) {
         const resp = await fetch(`${WEB_APP_URL}?action=check&id=${id}`);
         const result = await resp.json();
         if (result.registered) {
+            // Dismiss the loading spinner before showing the confirm dialog
+            document.getElementById('master-overlay').classList.add('hidden');
             // Ask for confirmation before logging in automatically
             confirmAction(`Welcome back!`, `Log in as ${result.alias}?`, "Yes, Login", "Oops, not me").then(shouldLogin => {
                 if (shouldLogin) {
                     // Update local storage with backend data
                     if (result.feedbackGiven) {
-                        // We use existence of lastFeedback as the 'unlocked' flag.
-                        // If it's missing (new device), set a marker so stats appear unlocked.
                         if (!localStorage.getItem('lastFeedback')) {
                             localStorage.setItem('lastFeedback', JSON.stringify({ imported: true }));
                         }
@@ -787,11 +778,9 @@ async function checkUserInSystem(id) {
                     localStorage.setItem('danceAppUser', JSON.stringify({
                         chipID: id, alias: result.alias, role: result.role, userKey: result.storedKey
                     }));
-                    // Cleanup pending ID as we are now fully logged in
                     localStorage.removeItem('pendingChipId');
                     location.reload();
                 } else {
-                    // User denied, maybe show scan status again
                     showStatus('error', 'Login Cancelled', 'Tap another chip or try again.');
                 }
             });
@@ -799,6 +788,7 @@ async function checkUserInSystem(id) {
             showView('registration-view');
         }
     } catch (e) {
+        showView('scan-view');
         showStatus('error', 'Connection Error', 'Please tap again.');
     }
 }

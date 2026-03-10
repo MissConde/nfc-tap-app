@@ -7,36 +7,7 @@ const urlParams = new URLSearchParams(window.location.search);
 const idFromURL = urlParams.get('id');
 let fullHistoryData = [];
 
-// ── INSTALL PROMPT (captured early, before the browser fires it) ────────────
-let _deferredInstallPrompt = null;
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault(); // Stop the default Chrome mini-bar from appearing.
-    _deferredInstallPrompt = e; // Save it so we can trigger it from our own UI.
-});
-
-// ── PWA LAUNCH QUEUE (Android Chrome) ────────────────────────────────────────
-// If the PWA is already open in the background, this intercepts the NFC tap URL
-// and prevents a new tab from opening (requires "focus-existing" in manifest).
-if ('launchQueue' in window) {
-    window.launchQueue.setConsumer((launchParams) => {
-        if (!launchParams.targetURL) return;
-        const targetUrl = new URL(launchParams.targetURL);
-        const tapId = targetUrl.searchParams.get('id');
-
-        if (tapId) {
-            const savedUser = JSON.parse(localStorage.getItem('danceAppUser'));
-            if (savedUser && savedUser.chipID) {
-                if (tapId !== savedUser.chipID) {
-                    // Logged in user scanned a partner
-                    handleAutoLog(savedUser.chipID, tapId);
-                }
-            } else {
-                // Not logged in -> trigger login/reg flow
-                checkUserInSystem(tapId);
-            }
-        }
-    });
-}
+// PWA features (launchQueue, install banners) removed.
 
 // Immediately invoke the user check so we don't wait for images/CSS to download.
 // --- PERSISTENCE FIX ---
@@ -50,26 +21,7 @@ const activeChipId = idFromURL || localStorage.getItem('pendingChipId');
 
 window.onload = async () => {
     const savedUser = JSON.parse(localStorage.getItem('danceAppUser'));
-
-    // --- iOS AUTOMATIC SYNC ---
-    // If the URL contains a sync_token, the user added the app to their home screen
-    // from a browser session where they were already logged in. 
-    // We immediately save their session to the PWA's isolated storage.
-    const syncToken = urlParams.get('sync_token');
-    const syncAlias = urlParams.get('sync_alias');
-    const syncChip = urlParams.get('sync_chip');
-
-    if (syncToken && syncAlias && syncChip && !savedUser) {
-        localStorage.setItem('danceAppUser', JSON.stringify({
-            chipID: syncChip,
-            alias: syncAlias,
-            userKey: syncToken
-        }));
-        // Clean URL so they don't share their token if they copy the URL later
-        window.history.replaceState({}, document.title, window.location.pathname + '?id=' + syncChip);
-        location.reload();
-        return;
-    }
+    // iOS automated sync features have been removed.
 
     if (savedUser && savedUser.chipID) {
         // --- LOGGED IN ---
@@ -78,24 +30,10 @@ window.onload = async () => {
 
         // Check if we scanned a DIFFERENT chip while logged in
         if (activeChipId && activeChipId !== savedUser.chipID) {
-
-            // --- AUTO CLOSE BROWSER TABS (iOS Fix) ---
-            // If they are NOT in standalone (PWA) mode, they are in a browser tab.
-            // On iOS, every tap opens a new tab. We want to auto-close this tab
-            // after logging the dance so they don't end up with 50 tabs.
-            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-
-            if (!isStandalone) {
-                // We are in a browser tab. Log it, show a success screen, and auto-close.
-                handleAutoLogWithAutoClose(savedUser.chipID, activeChipId);
-            } else {
-                // We are in the PWA (or Android launchQueue). Just log normally.
-                handleAutoLog(savedUser.chipID, activeChipId);
-            }
-        } else {
-            // Only show the install prompt when they are staying on the dashboard
-            // (not when we're about to switch to auto-close or auto-log views)
-            showInstallPrompt();
+            // Since there is no PWA anymore, every physical tap opens a new browser tab.
+            // We want to log the dance in this new tab, show a success message, and then 
+            // attempt to auto-close the tab so the user's browser doesn't fill up with hundreds of tabs.
+            handleAutoLogWithAutoClose(savedUser.chipID, activeChipId);
         }
     } else if (activeChipId) {
         // --- NEW CHIP DETECTED (Browser OR PWA) ---
@@ -122,105 +60,7 @@ window.onload = async () => {
     });
 };
 
-/** --- INSTALL TO HOME SCREEN PROMPT --- **/
-
-/**
- * Shows a platform-appropriate install banner if:
- * - The app is NOT already running as a standalone PWA
- * - The user hasn't permanently dismissed it
- */
-function showInstallPrompt() {
-    // Already installed as PWA — no need to prompt.
-    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) return;
-    // User dismissed it before — respect that.
-    if (sessionStorage.getItem('installDismissed')) return;
-    // Only show if the user is fully logged in and on the dashboard
-    const user = JSON.parse(localStorage.getItem('danceAppUser'));
-    if (!user || !user.chipID) return;
-    const dancerView = document.getElementById('dancer-view');
-    if (!dancerView || dancerView.classList.contains('hidden')) return;
-
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isAndroid = /Android/.test(navigator.userAgent);
-
-    if (!isIOS && !isAndroid) return; // Desktop — no prompt needed.
-
-    // Build the banner
-    const banner = document.createElement('div');
-    banner.id = 'install-banner';
-    // --- NON-BLOCKING BOTTOM BANNER CSS ---
-    banner.style.cssText = [
-        'position:fixed', 'bottom:20px', 'left:5%', 'right:5%', 'width:90%',
-        'background:rgba(30, 41, 59, 0.95)', 'color:#fff',
-        'padding:12px 16px', 'z-index:2000', 'border-radius:12px',
-        'display:flex', 'align-items:center', 'gap:12px',
-        'box-shadow:0 8px 32px rgba(0,0,0,0.5)',
-        'border:1px solid rgba(255,255,255,0.1)',
-        'backdrop-filter:blur(10px)', '-webkit-backdrop-filter:blur(10px)',
-        'font-size:0.85rem', 'line-height:1.4',
-        'animation: slideUp 0.5s ease-out forwards'
-    ].join(';');
-
-    const icon = isIOS ? '📲' : '📲';
-
-    // Inject the user's sync token into the iOS instructions so when they "Add to Home Screen",
-    // the PWA opens with their identity automatically embedded.
-    let installUrl = window.location.href;
-    const savedForSync = JSON.parse(localStorage.getItem('danceAppUser'));
-    if (savedForSync && isIOS) {
-        const syncUrl = new URL(window.location.href);
-        syncUrl.searchParams.set('sync_token', savedForSync.userKey || '');
-        syncUrl.searchParams.set('sync_alias', savedForSync.alias || '');
-        syncUrl.searchParams.set('sync_chip', savedForSync.chipID || '');
-        installUrl = syncUrl.href;
-    }
-
-    const instructions = isIOS
-        ? `<strong style="color:var(--primary);font-size:0.95rem;">Add App to Home Screen</strong><br>
-           Tap <strong style="color:#fff;">⎙ Share</strong> below, then <strong style="color:#fff;">Add to Home Screen</strong>.<br>
-           <small style="color:#aaa;">(This securely transfers your login to the app)</small>`
-        : `<strong style="color:var(--primary);font-size:0.95rem;">Install Dance Tracker</strong><br>
-           Install the app for instant NFC scanning without new tabs opening.`;
-
-    banner.innerHTML = `
-        <span style="font-size:1.8rem;flex-shrink:0;">${icon}</span>
-        <div style="flex:1;">${instructions}</div>
-        <div style="display:flex;flex-direction:column;gap:8px;flex-shrink:0;">
-            ${isAndroid ? `<button id="install-accept-btn" style="background:var(--primary);color:#fff;border:none;border-radius:20px;padding:8px 16px;font-weight:600;font-size:0.8rem;cursor:pointer;box-shadow:0 2px 8px rgba(255,0,85,0.4);">Install</button>` : ''}
-            <button id="install-dismiss-btn" style="background:transparent;color:#bbb;border:none;font-size:0.75rem;cursor:pointer;padding:4px;">Dismiss</button>
-        </div>`;
-
-    document.body.appendChild(banner);
-
-    // Android: trigger native install prompt on button tap
-    const acceptBtn = document.getElementById('install-accept-btn');
-    if (acceptBtn && _deferredInstallPrompt) {
-        acceptBtn.addEventListener('click', async () => {
-            banner.remove();
-            _deferredInstallPrompt.prompt();
-            const { outcome } = await _deferredInstallPrompt.userChoice;
-            if (outcome === 'accepted') {
-                sessionStorage.setItem('installDismissed', '1');
-            }
-            _deferredInstallPrompt = null;
-        });
-    } else if (acceptBtn) {
-        // beforeinstallprompt didn't fire (not eligible yet) — hide the install button
-        acceptBtn.style.display = 'none';
-    }
-
-    // iOS users need to be explicitly on the URL with the sync tokens before they tap Share
-    if (isIOS && savedForSync && !window.location.search.includes('sync_token')) {
-        // Auto-redirect them once to append the tokens to the URL bar so "Share" captures it
-        window.history.replaceState({}, document.title, installUrl);
-    }
-
-    // Dismiss permanently
-    document.getElementById('install-dismiss-btn').addEventListener('click', () => {
-        banner.remove();
-        sessionStorage.setItem('installDismissed', '1');
-    });
-}
+/** --- INSTALL TO HOME SCREEN PROMPT (REMOVED) --- **/
 
 /** --- MASTER UI CONTROLLER (OVERLAYS) --- **/
 
@@ -540,10 +380,7 @@ async function handleAutoLog(myID, partnerID) {
     }
 }
 
-/**
- * Specifically for iOS Safari/Chrome instances that get opened by a background NFC tap.
- * Logs the dance, displays a full-screen "Done" message, and attempts to auto-close the tab.
- */
+// Auto-close browser tab flow
 async function handleAutoLogWithAutoClose(myID, partnerID) {
     // Show a full-screen takeover immediately so they know it's working
     showView('auto-close-view');

@@ -382,6 +382,9 @@ async function handleAutoLog(myID, partnerID) {
 
 // Auto-close browser tab flow
 async function handleAutoLogWithAutoClose(myID, partnerID) {
+    // Clear the pending chip so if they refresh or reopen the app, it doesn't log again
+    localStorage.removeItem('pendingChipId');
+
     // Show a full-screen takeover immediately so they know it's working
     showView('auto-close-view');
     document.getElementById('auto-close-status').innerText = "Logging dance...";
@@ -618,7 +621,9 @@ async function checkUserInSystem(id) {
                     localStorage.removeItem('pendingChipId');
                     location.reload();
                 } else {
-                    showStatus('error', 'Login Cancelled', 'Tap another chip or try again.');
+                    localStorage.removeItem('pendingChipId');
+                    showStatus('error', 'Canceled', 'You may close this tab.');
+                    setTimeout(() => window.close(), 2000);
                 }
             });
         } else {

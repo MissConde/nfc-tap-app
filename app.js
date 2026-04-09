@@ -618,7 +618,8 @@ async function checkUserInSystem(id) {
                     localStorage.removeItem('pendingChipId');
                     location.reload();
                 } else {
-                    showStatus('error', 'Login Cancelled', 'Tap another chip or try again.');
+                    showStatus('error', 'Canceled', 'You may close this tab.');
+                    setTimeout(() => window.close(), 2000);
                 }
             });
         } else {

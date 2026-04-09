@@ -7,7 +7,6 @@ function doGet(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const userSheet = ss.getSheetByName("Users");
   const interSheet = ss.getSheetByName("Interactions");
-  const userData = userSheet.getDataRange().getValues();
 
   // --- NEW: GET DYNAMIC FEEDBACK TEMPLATE ---
   if (action === "getFeedbackTemplate") {
@@ -33,32 +32,52 @@ function doGet(e) {
     const field = e.parameter.field;
     const value = (e.parameter.value || "").toLowerCase();
     const colIndex = field === 'alias' ? 2 : 4;
+    const userData = userSheet.getDataRange().getValues();
     const exists = userData.some((row, i) => i > 0 && row[colIndex] && row[colIndex].toString().toLowerCase() === value);
     return jsonResponse({ exists: exists });
   }
 
   if (action === "check") {
     const chipID = e.parameter.id;
+    const cache = CacheService.getScriptCache();
+    const cachedResp = cache.get('user_' + chipID);
+
+    if (cachedResp) {
+      return ContentService.createTextOutput(cachedResp).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const userData = userSheet.getDataRange().getValues();
     const feedbackSheet = ss.getSheetByName("Feedback");
-    const feedbackData = feedbackSheet.getDataRange().getValues();
-    let hasGivenFeedback = feedbackData.some((row, i) => i > 0 && row[1] == chipID);
+    let hasGivenFeedback = false;
+
+    if (feedbackSheet.getLastRow() > 1) {
+      const feedbackData = feedbackSheet.getDataRange().getValues();
+      hasGivenFeedback = feedbackData.some((row, i) => i > 0 && row[1] == chipID);
+    }
 
     for (let i = 1; i < userData.length; i++) {
       if (userData[i][0] == chipID) {
-        return jsonResponse({
+        const respObj = {
           registered: true,
           alias: userData[i][2],
           role: userData[i][5],
           storedKey: userData[i][1],
           feedbackGiven: hasGivenFeedback
-        });
+        };
+        const respStr = JSON.stringify(respObj);
+        cache.put('user_' + chipID, respStr, 300); // Cache for 5 minutes
+        return jsonResponse(respObj);
       }
     }
+
+    // Not registered
+    const unregStr = JSON.stringify({ registered: false });
+    cache.put('user_' + chipID, unregStr, 60); // Cache missing for 1 min
     return jsonResponse({ registered: false });
   }
 
-  if (action === "logDance") return handleLogDance(e.parameter.scannerId, e.parameter.targetId, interSheet, userData);
-  if (action === "getHistory") return handleGetHistory(e.parameter.id, interSheet, userData);
+  if (action === "logDance") return handleLogDance(e.parameter.scannerId, e.parameter.targetId, interSheet, userSheet);
+  if (action === "getHistory") return handleGetHistory(e.parameter.id, interSheet, userSheet);
 
   if (action === "confirmManual" || action === "cancelDance") {
     const status = action === "confirmManual" ? "Confirmed" : "Cancelled";
@@ -81,6 +100,7 @@ function doPost(e) {
       params.fullName, params.email, params.role,
       params.consent, params.igUser, new Date()
     ]);
+    CacheService.getScriptCache().remove('user_' + params.chipID);
     return ContentService.createTextOutput("User Registered");
   }
 
@@ -109,10 +129,12 @@ function doPost(e) {
     if (existingRowIndex > -1) {
       // 2. UPDATE existing row
       feedbackSheet.getRange(existingRowIndex, 1, 1, newRow.length).setValues([newRow]);
+      CacheService.getScriptCache().remove('user_' + params.chipID);
       return ContentService.createTextOutput("Feedback Updated");
     } else {
       // 3. APPEND new row
       feedbackSheet.appendRow(newRow);
+      CacheService.getScriptCache().remove('user_' + params.chipID);
       return ContentService.createTextOutput("Feedback Saved");
     }
   }
@@ -122,18 +144,24 @@ function doPost(e) {
  * LOGIC HANDLERS
  */
 
-function handleLogDance(scannerId, targetId, interSheet, userData) {
+function handleLogDance(scannerId, targetId, interSheet, userSheet) {
   const now = new Date();
-  const data = interSheet.getDataRange().getValues();
   const sessionId = Utilities.formatDate(now, "GMT+1", "yyyy-MM-dd");
+  const cache = CacheService.getScriptCache();
 
-  // --- CHECK IF TARGET IS REGISTERED ---
+  // --- CHECK IF TARGET IS REGISTERED (CACHE FIRST) ---
   let targetExists = false;
-  // Start at i=1 to skip header
-  for (let i = 1; i < userData.length; i++) {
-    if (userData[i][0] == targetId) {
-      targetExists = true;
-      break;
+  const cachedTarget = cache.get('user_' + targetId);
+  if (cachedTarget) {
+    const targetObj = JSON.parse(cachedTarget);
+    if (targetObj.registered) targetExists = true;
+  } else {
+    const userData = userSheet.getDataRange().getValues();
+    for (let i = 1; i < userData.length; i++) {
+      if (userData[i][0] == targetId) {
+        targetExists = true;
+        break;
+      }
     }
   }
 
@@ -143,10 +171,19 @@ function handleLogDance(scannerId, targetId, interSheet, userData) {
   }
   // ------------------------------------------
 
+  // --- OPTIMIZED INTERACTIONS FETCH ---
+  const lastRow = interSheet.getLastRow();
+  const FETCH_LIMIT = 500;
+  const startRow = Math.max(2, lastRow - FETCH_LIMIT + 1);
+  const numRows = lastRow >= 2 ? lastRow - startRow + 1 : 0;
+
+  // Read ONLY the last 500 rows instead of massive grid
+  const data = numRows > 0 ? interSheet.getRange(startRow, 1, numRows, 4).getValues() : [];
+
   let reverseMatchRow = -1;
   let duplicateRow = -1;
 
-  for (let i = data.length - 1; i >= 1; i--) {
+  for (let i = data.length - 1; i >= 0; i--) {
     const row = data[i];
     const rowScanner = row[1];
     const rowTarget = row[2];
@@ -156,13 +193,13 @@ function handleLogDance(scannerId, targetId, interSheet, userData) {
 
     // 1. THE HANDSHAKE (They scanned me in the last 10 mins)
     if (rowScanner == targetId && rowTarget == scannerId && rowStatus == "Pending" && timeDiff <= 10) {
-      reverseMatchRow = i + 1;
+      reverseMatchRow = startRow + i;
       break;
     }
 
     // 2. THE DUPLICATE (I already scanned them in the last 10 mins)
     if (rowScanner == scannerId && rowTarget == targetId && rowStatus == "Pending" && timeDiff <= 10) {
-      duplicateRow = i + 1;
+      duplicateRow = startRow + i;
       break;
     }
   }
@@ -182,8 +219,9 @@ function handleLogDance(scannerId, targetId, interSheet, userData) {
   return jsonResponse({ success: true, status: "Pending" });
 }
 
-function handleGetHistory(myId, interSheet, userData) {
+function handleGetHistory(myId, interSheet, userSheet) {
   const interData = interSheet.getDataRange().getValues();
+  const userData = userSheet.getDataRange().getValues();
   const history = [];
   const aliasMap = {};
   for (let i = 1; i < userData.length; i++) { aliasMap[userData[i][0]] = userData[i][2]; }

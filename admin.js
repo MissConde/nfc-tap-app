@@ -1,4 +1,4 @@
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby5wet3I48Q1zmUxWo5eHFAycw6wbwGYggHuk3_2IRMaBM1q2ePr78ayQxdVCwjM7p1/exec"; // Replace with actual URL if different
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyNy71dVht4iE4My0Pd0lhac1g6pKVNrsqpAER69Ls2D-yr1k1yyEdHHrpPDnGrhZzE/exec"; // Replace with actual URL if different
 
 // --- ON LOAD ---
 document.addEventListener('DOMContentLoaded', () => {

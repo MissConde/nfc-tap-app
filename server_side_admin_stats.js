@@ -61,6 +61,7 @@ function doGet(e) {
           registered: true,
           alias: userData[i][2],
           role: userData[i][5],
+          country: userData[i][9] || "",
           storedKey: userData[i][1],
           feedbackGiven: hasGivenFeedback
         };
@@ -98,7 +99,7 @@ function doPost(e) {
     userSheet.appendRow([
       params.chipID, params.userKey, params.alias,
       params.fullName, params.email, params.role,
-      params.consent, params.igUser, new Date()
+      params.consent, params.igUser, new Date(), params.country
     ]);
     CacheService.getScriptCache().remove('user_' + params.chipID);
     return ContentService.createTextOutput("User Registered");
@@ -224,7 +225,11 @@ function handleGetHistory(myId, interSheet, userSheet) {
   const userData = userSheet.getDataRange().getValues();
   const history = [];
   const aliasMap = {};
-  for (let i = 1; i < userData.length; i++) { aliasMap[userData[i][0]] = userData[i][2]; }
+  const countryMap = {};
+  for (let i = 1; i < userData.length; i++) {
+    aliasMap[userData[i][0]] = userData[i][2];
+    countryMap[userData[i][0]] = userData[i][9] || "";
+  }
 
   for (let i = interData.length - 1; i >= 1; i--) {
     const row = interData[i];
@@ -236,6 +241,7 @@ function handleGetHistory(myId, interSheet, userSheet) {
         rowId: i + 1,
         timestamp: row[0],
         partnerAlias: aliasMap[partnerId] || "Unknown",
+        partnerCountry: countryMap[partnerId] || "",
         status: row[3],
         isTarget: (row[2] == myId)
       });
@@ -279,15 +285,17 @@ function handleGetAdminStats(e) {
 
   // Need a quick ID->Alias Map for the Feed
   // Fetch columns A (ID) and C (Alias) from Users
-  const userRaw = userSheet.getRange(2, 1, totalDancers, 6).getValues(); // Get A to F (Role is F/5)
+  const userRaw = userSheet.getRange(2, 1, totalDancers, 10).getValues(); // Get A to J
   const aliasMap = {};
   const roleMap = {};
+  const uniqueCountries = new Set();
   let leaderCount = 0;
 
   userRaw.forEach(r => {
-    // r[0]=ID, r[2]=Alias, r[5]=Role
+    // r[0]=ID, r[2]=Alias, r[5]=Role, r[9]=Country
     aliasMap[r[0]] = r[2];
     roleMap[r[0]] = r[5];
+    if (r[9]) uniqueCountries.add(r[9]);
     if (r[5] === 'Leader') leaderCount++;
   });
 
@@ -386,6 +394,7 @@ function handleGetAdminStats(e) {
     avgVibe: avgVibe,
     feedbackCount: feedbackCount,
     dancesLastHour: dancesOnDensity,
+    uniqueCountries: uniqueCountries.size,
     recentDances: recentDances,
     topDancers: sortedDancers
   };

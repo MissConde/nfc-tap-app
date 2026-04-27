@@ -133,6 +133,11 @@ async function loadDancerView(silent = false) {
         fullHistoryData = JSON.parse(cachedHistory);
         if (!silent) document.getElementById('master-overlay').classList.add('hidden');
         document.getElementById('displayName').innerText = user.alias;
+
+        const roleEmoji = user.role === 'Leader' ? '🕺' : (user.role === 'Follower' ? '💃' : '✨');
+        const metaStr = user.country ? `🌍 ${user.country} &nbsp;|&nbsp; ${roleEmoji} ${user.role}` : `${roleEmoji} ${user.role}`;
+        document.getElementById('displayMeta').innerHTML = metaStr;
+
         renderHistoryTable(fullHistoryData);
     } else {
         // No cache yet — show loading overlay until network responds.
@@ -149,6 +154,11 @@ async function loadDancerView(silent = false) {
 
         document.getElementById('master-overlay').classList.add('hidden');
         document.getElementById('displayName').innerText = user.alias;
+
+        const roleEmoji = user.role === 'Leader' ? '🕺' : (user.role === 'Follower' ? '💃' : '✨');
+        const metaStr = user.country ? `🌍 ${user.country} &nbsp;|&nbsp; ${roleEmoji} ${user.role}` : `${roleEmoji} ${user.role}`;
+        document.getElementById('displayMeta').innerHTML = metaStr;
+
         renderHistoryTable(fullHistoryData);
 
         // TODO: Future improvement - Check 'FeedbackGiven' column from backend instead of localStorage
@@ -495,8 +505,10 @@ function renderHistoryTable(data) {
                 </div>`;
         }
 
+        const aliasDisplay = row.partnerCountry ? `${row.partnerAlias} (${row.partnerCountry})` : row.partnerAlias;
+
         return `<tr>
-            <td><strong>${row.partnerAlias}</strong></td>
+            <td><strong>${aliasDisplay}</strong></td>
             <td><small style="color: #888;">${timeStr}</small></td>
             <td style="text-align: right;">${statusHtml}</td>
         </tr>`;
@@ -616,7 +628,7 @@ async function checkUserInSystem(id) {
                     }
 
                     localStorage.setItem('danceAppUser', JSON.stringify({
-                        chipID: id, alias: result.alias, role: result.role, userKey: result.storedKey
+                        chipID: id, alias: result.alias, role: result.role, country: result.country, userKey: result.storedKey
                     }));
                     localStorage.removeItem('pendingChipId');
                     location.reload();
@@ -650,6 +662,7 @@ document.getElementById('regForm').onsubmit = async (e) => {
         userKey: userKey,
         alias: document.getElementById('alias').value.trim(),
         fullName: document.getElementById('fullName').value.trim(),
+        country: document.getElementById('country').value,
         email: document.getElementById('email').value.trim(),
         role: roleValue,
         igUser: document.getElementById('igUser').value.trim().replace('@', ''),
@@ -665,7 +678,7 @@ document.getElementById('regForm').onsubmit = async (e) => {
         showStatus('success', 'Chip Linked!', 'Welcome to the festival.');
         setTimeout(() => {
             localStorage.setItem('danceAppUser', JSON.stringify({
-                chipID: chipID, alias: payload.alias, userKey: userKey, role: payload.role
+                chipID: chipID, alias: payload.alias, userKey: userKey, role: payload.role, country: payload.country
             }));
             // Cleanup pending ID
             localStorage.removeItem('pendingChipId');

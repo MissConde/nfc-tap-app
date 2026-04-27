@@ -1,4 +1,4 @@
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyNy71dVht4iE4My0Pd0lhac1g6pKVNrsqpAER69Ls2D-yr1k1yyEdHHrpPDnGrhZzE/exec"; // Replace with actual URL if different
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyyL1QO2a3T53Qu66qXfJv6K8C8_m-NNin5Zox4TZjDpdVfYy-k45W8VnvCKXD7ClCT/exec"; // Replace with actual URL if different
 
 // --- ON LOAD ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -70,6 +70,10 @@ window.fetchAdminStats = async function () {
         // 3. Feedback Completed
         const elFeedback = document.getElementById('feedback-completed-count');
         if (elFeedback) elFeedback.innerText = data.feedbackCount || 0;
+
+        // 3b. Diverse Countries
+        const elCountry = document.getElementById('country-count');
+        if (elCountry) elCountry.innerText = data.uniqueCountries || 0;
 
         // 4. Live Feed
         const elFeedList = document.getElementById('live-feed-list');

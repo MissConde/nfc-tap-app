@@ -5,7 +5,22 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 const supabaseUrl = 'https://ksgdxvbwwgktcpzoxbba.supabase.co'
 const supabaseKey = 'sb_publishable_dVwp9LRmcJSmaBnAijuu5A_I1twLkMT'
+// const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtzZ2R4dmJ3d2drdGNwem94YmJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3NDM1ODEsImV4cCI6MjA5NzMxOTU4MX0.PQoBQa0ncMM933iOQd7F7Jf6-9iqMzbkhBLFp5I9eoI'
 export const supabase = createClient(supabaseUrl, supabaseKey)
+
+
+// --- Anonymous Authentication ---
+export async function initializeDatabaseConnection() {
+    const { data } = await supabase.auth.getSession();
+
+    // If there is no active session, sign in silently as an anonymous user
+    if (!data.session) {
+        const { error } = await supabase.auth.signInAnonymously();
+        if (error) {
+            console.error("Could not establish anonymous connection:", error);
+        }
+    }
+}
 
 // --- USER FUNCTIONS ---
 
@@ -15,7 +30,7 @@ export async function checkUser(chip_id) {
         .from('users')
         .select('*')
         .eq('chip_id', chip_id)
-        .single();
+        .maybeSingle();
 
     if (!user) return { registered: false };
 
@@ -49,13 +64,13 @@ export async function logDance(scanner_id, target_id) {
     const tenMinsAgo = new Date(now.getTime() - 10 * 60000).toISOString();
 
     // 1. Check if target is registered
-    const { data: targetExists } = await supabase
+    const { data: targetData } = await supabase
         .from('users')
         .select('chip_id, alias, confession')
         .eq('chip_id', target_id)
-        .single();
+        .maybeSingle();
 
-    if (!targetExists) return { success: false, status: "Unregistered" };
+    if (!targetData) return { success: false, status: "Unregistered" };
 
     const partnerAlias = targetData.alias;
     const confession = targetData.confession || "";
@@ -70,13 +85,13 @@ export async function logDance(scanner_id, target_id) {
 
     if (recentLogs && recentLogs.length > 0) {
         const log = recentLogs[0];
-        
+
         // The Handshake: Target scanned me recently, so confirm it.
         if (log.scanner_id === target_id) {
             await supabase.from('interactions').update({ status: 'Confirmed' }).eq('id', log.id);
             return { success: true, status: "Confirmed", partnerAlias, confession };
         }
-        
+
         // The Duplicate: I already scanned them, update timestamp to reset cooldown.
         if (log.scanner_id === scanner_id) {
             await supabase.from('interactions').update({ timestamp: now.toISOString() }).eq('id', log.id);
@@ -145,4 +160,18 @@ export async function submitFeedback(chip_id, feedbackData) {
     const { error } = await supabase.from('feedback').upsert(payload, { onConflict: 'chip_id' });
     if (error) throw error;
     return true;
+}
+
+export async function getUserFeedback(chip_id) {
+    const { data, error } = await supabase
+        .from('feedback')
+        .select('*')
+        .eq('chip_id', chip_id)
+        .maybeSingle(); // maybeSingle because they might not have given feedback yet!
+
+    if (error) {
+        console.error("Error fetching user feedback:", error);
+        return null;
+    }
+    return data;
 }

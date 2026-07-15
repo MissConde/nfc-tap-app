@@ -16,6 +16,11 @@ if (idFromURL) {
 const activeChipId = idFromURL || localStorage.getItem('pending_chip_id');
 
 window.onload = async () => {
+    // 1. Force the app to wait for the secure connection to finish FIRST
+    if (db.initializeDatabaseConnection) {
+        await db.initializeDatabaseConnection();
+    }
+
     const savedUser = JSON.parse(localStorage.getItem('danceAppUser'));
 
     if (savedUser && savedUser.chip_id) {
@@ -129,7 +134,7 @@ async function handleAutoLogWithAutoClose(myID, partnerID) {
                 <h2 style="color:var(--success);">Enjoy the dance!</h2>
                 <p style="color:var(--text-secondary); margin-top:10px;">Waiting for ${alias} to scan back.</p>
                 ${confessionHtml}
-                <button class="primary-btn" onclick="window.close()" style="margin-top:20px;">Close Tab</button>`;  
+                <button class="primary-btn" onclick="window.close()" style="margin-top:20px;">Close Tab</button>`;
             if (navigator.vibrate) navigator.vibrate(100);
             setTimeout(() => window.close(), 2500);
         }
@@ -170,7 +175,7 @@ window.cancelDance = async function (rowId) {
 async function checkUserInSystem(id) {
     try {
         const result = await db.checkUser(id);
-        
+
         if (result.registered) {
             document.getElementById('master-overlay').classList.add('hidden');
             confirmAction(`Welcome back!`, `Log in as ${result.alias}?`, "Yes, Login", "Oops, not me").then(shouldLogin => {
@@ -336,7 +341,7 @@ function renderHistoryTable(data) {
 
         const flag = getFlagEmoji(row.partnerCountry);
         const aliasDisplay = flag ? `<span style="font-size:1.1em; margin-right:4px;">${flag}</span> ${row.partnerAlias}` : row.partnerAlias;
-        
+
         return `<tr>
             <td><strong>${aliasDisplay}</strong></td>
             <td><small style="color: #888;">${timeStr}</small></td>
@@ -394,7 +399,403 @@ window.filterHistory = function (type) {
     else if (type === 'Pending') renderHistoryTable(fullHistoryData.filter(item => item.status === 'Pending' && item.isTarget === true));
 };
 
-// Placeholders for stats visual logic (keeping your existing logic safe)
-function calculateStats(data) { /* Same as your old logic */ }
-function updateStatsUI(stats) { /* Same as your old logic */ }
-function calculateAndDisplayStats() { /* Same as your old logic */ }
+/** --- FEEDBACK FORM & SUBMISSION --- **/
+
+let currentFeedbackTemplate = [];
+
+window.validateFeedbackForm = function () {
+    const submitBtn = document.getElementById('feedbackSubmitBtn');
+    if (!submitBtn) return;
+
+    let isValid = true;
+    currentFeedbackTemplate.forEach(q => {
+        if (q.required) {
+            const input = document.getElementById(`q_${q.id}`);
+            if (!input || !input.value.trim()) isValid = false;
+        }
+    });
+
+    submitBtn.disabled = !isValid;
+    if (isValid) {
+        submitBtn.classList.remove('btn-locked');
+    } else {
+        submitBtn.classList.add('btn-locked');
+    }
+};
+
+window.handleStarTouch = function (e, qId) {
+    if (e.type === 'touchmove') e.preventDefault(); 
+
+    let rating = 0;
+
+    if (e.type === 'click') {
+        // If clicked, find exactly which star was clicked
+        const star = e.target.closest('.star-icon');
+        if (!star) return; 
+        rating = parseInt(star.getAttribute('data-val'), 10);
+    } 
+    else if (e.type === 'touchmove') {
+        // If swiping, find exactly which star is under the finger
+        const touch = e.touches[0];
+        const elementUnderFinger = document.elementFromPoint(touch.clientX, touch.clientY);
+        
+        if (!elementUnderFinger || !elementUnderFinger.classList.contains('star-icon')) return;
+        rating = parseInt(elementUnderFinger.getAttribute('data-val'), 10);
+    }
+
+    if (!rating || rating < 1 || rating > 5) return;
+
+    // 1. Set the hidden input value
+    const input = document.getElementById(`q_${qId}`);
+    if (input) input.value = rating;
+
+    // 2. Instantly update the visual UI
+    const container = document.getElementById(`stars_${qId}`);
+    const stars = container.querySelectorAll('.star-icon');
+    
+    stars.forEach((starEl, index) => {
+        if (index < rating) {
+            starEl.classList.add('active');
+        } else {
+            starEl.classList.remove('active');
+        }
+    });
+
+    validateFeedbackForm();
+};
+
+function renderDynamicFeedback(template) {
+    const container = document.getElementById('dynamic-questions-container');
+    let html = '';
+    let currentCategory = '';
+
+    template.forEach(q => {
+        if (q.category && q.category !== currentCategory) {
+            currentCategory = q.category;
+            html += `<h4 class="form-category-header">${currentCategory}</h4>`;
+        }
+
+        let inputHtml = '';
+        if (q.type === 'scale') {
+            // Determine max stars from database options
+            let maxStars = 5;
+            if (q.options) {
+                const parts = q.options.toString().split(',');
+                maxStars = parts.length > 1 ? parts.length : parseInt(parts[0], 10);
+            }
+            if (isNaN(maxStars) || maxStars <= 0) maxStars = 5;
+
+            let starsHtml = '';
+            for (let i = 1; i <= maxStars; i++) {
+                starsHtml += `<span class="star-icon" data-val="${i}">★</span>`;
+            }
+
+            inputHtml = `
+            <div class="star-rating" id="stars_${q.id}" 
+                 ontouchmove="handleStarTouch(event, '${q.id}', ${maxStars})"
+                 onclick="handleStarTouch(event, '${q.id}', ${maxStars})">
+                ${starsHtml}
+            </div>
+            <input type="hidden" id="q_${q.id}">
+            `;
+        } else if (q.type === 'select') {
+            // FIX: Convert Supabase TEXT string to an Array
+            let optionsArray = [];
+            if (q.options) {
+                optionsArray = typeof q.options === 'string' ? q.options.split(',').map(s => s.trim()) : [];
+            }
+            inputHtml = `<select id="q_${q.id}" ${q.required ? 'required' : ''}>
+                <option value="" disabled selected>Select...</option>
+                ${optionsArray.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+            </select>`;
+        } else if (q.type === 'textarea') {
+            inputHtml = `<textarea id="q_${q.id}" rows="2" ${q.required ? 'required' : ''}></textarea>`;
+        } else {
+            inputHtml = `<input type="text" id="q_${q.id}" ${q.required ? 'required' : ''}>`;
+        }
+
+        html += `
+            <div class="input-group" style="margin-bottom: 20px;">
+                <label style="font-weight:bold; font-size: 0.85rem; color: var(--text-primary);">
+                    ${q.label} ${q.required ? '<span style="color:var(--error)">*</span>' : ''}
+                </label>
+                ${inputHtml}
+            </div>`;
+    });
+
+    container.innerHTML = html;
+
+    const inputs = container.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+        input.addEventListener('input', validateFeedbackForm);
+        input.addEventListener('change', validateFeedbackForm);
+    });
+
+    validateFeedbackForm();
+}
+
+window.showFeedbackForm = async function () {
+    showStatus('loading', 'Loading Survey', 'Please wait...');
+    try {
+        if (currentFeedbackTemplate.length === 0) {
+            currentFeedbackTemplate = await db.getFeedbackTemplate();
+        }
+        document.getElementById('master-overlay').classList.add('hidden');
+        renderDynamicFeedback(currentFeedbackTemplate);
+        document.getElementById('feedback-overlay').classList.remove('hidden');
+    } catch (e) {
+        showStatus('error', 'Error', 'Could not load form.');
+    }
+};
+
+window.hideFeedback = function () {
+    document.getElementById('feedback-overlay').classList.add('hidden');
+};
+
+window.redoFeedback = function () {
+    localStorage.removeItem('frozenStats');
+    currentFeedbackTemplate = []; 
+    window.showFeedbackForm();
+};
+
+document.getElementById('feedbackForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const user = JSON.parse(localStorage.getItem('danceAppUser'));
+    if (!user) return;
+
+    const submitBtn = document.getElementById('feedbackSubmitBtn');
+    submitBtn.disabled = true;
+    submitBtn.innerText = 'Submitting...';
+
+    // Collect answers from the template
+    const feedbackData = {};
+    currentFeedbackTemplate.forEach(q => {
+        const el = document.getElementById(`q_${q.id}`);
+        
+        // Ensure the element exists and is not empty before saving
+        if (el && el.value !== "") {
+            // FIX 1: Use q.id directly so it matches Supabase columns perfectly
+            // FIX 2: Convert scale values into true Integers
+            if (q.type === 'scale' || q.type === 'number') {
+                feedbackData[q.id] = parseInt(el.value, 10);
+            } else {
+                feedbackData[q.id] = el.value;
+            }
+        }
+    });
+
+    try {
+        await db.submitFeedback(user.chip_id, feedbackData);
+
+        // Freeze stats snapshot then unlock
+        const snapshot = calculateStats(fullHistoryData);
+        localStorage.setItem('frozenStats', JSON.stringify(snapshot));
+        localStorage.setItem('lastFeedback', JSON.stringify({ submitted: true }));
+
+        window.hideFeedback();
+        showStatus('success', 'Thank you! 🎉', 'Your stats are now unlocked.');
+
+        setTimeout(() => loadDancerView(), 2000);
+    } catch (err) {
+        // Logs the exact Supabase error to your browser console so you can see what failed
+        console.error("Supabase Submission Error:", err); 
+        
+        showStatus('error', 'Error', 'Could not submit feedback. Try again.');
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'Submit & Unlock Highlights';
+    }
+};
+
+// // SINGLE SUBMIT HANDLER
+// document.getElementById('feedbackForm').onsubmit = async (e) => {
+//     e.preventDefault();
+//     const user = JSON.parse(localStorage.getItem('danceAppUser'));
+//     if (!user) return;
+
+//     const submitBtn = document.getElementById('feedbackSubmitBtn');
+//     submitBtn.disabled = true;
+//     submitBtn.innerText = 'Submitting...';
+
+//     // Gather answers specifically mapped to Supabase column names
+//     const feedbackData = {};
+//     currentFeedbackTemplate.forEach(q => {
+//         const el = document.getElementById(`q_${q.id}`);
+//         if (el && el.value !== "") {
+//             // Ensure numeric values are cast to integers for Supabase INTEGER columns
+//             feedbackData[q.id] = (q.type === 'scale' || q.type === 'number') ? Number(el.value) : el.value;
+//         }
+//     });
+
+//     try {
+//         await db.submitFeedback(user.chip_id, feedbackData);
+
+//         // Freeze stats snapshot then unlock
+//         const snapshot = calculateStats(fullHistoryData);
+//         localStorage.setItem('frozenStats', JSON.stringify(snapshot));
+//         localStorage.setItem('lastFeedback', JSON.stringify({ submitted: true }));
+
+//         window.hideFeedback();
+//         showStatus('success', 'Thank you! 🎉', 'Your stats are now unlocked.');
+
+//         setTimeout(() => loadDancerView(), 2000);
+//     } catch (err) {
+//         console.error("Submit Error:", err);
+//         showStatus('error', 'Error', 'Could not submit feedback. Try again.');
+//         submitBtn.disabled = false;
+//         submitBtn.innerText = 'Submit & Unlock Highlights';
+//     }
+// };
+
+/** --- STATS LOGIC --- **/
+
+function calculateStats(data) {
+    const confirmed = data.filter(d => d.status === 'Confirmed');
+
+    if (confirmed.length === 0) {
+        return { total: 0, peak: "--", unique: 0, favorite: "--" };
+    }
+
+    const timeSlots = confirmed.map(d => {
+        const date = new Date(d.timestamp);
+        const day = date.toLocaleDateString([], { weekday: 'short' });
+        const hour = date.getHours();
+        return `${day} ${hour}`; 
+    });
+
+    const slotCounts = {};
+    timeSlots.forEach(slot => { slotCounts[slot] = (slotCounts[slot] || 0) + 1; });
+    const peakSlot = Object.keys(slotCounts).reduce((a, b) => slotCounts[a] > slotCounts[b] ? a : b);
+    const [pDay, pHour] = peakSlot.split(' ');
+
+    const partnerCounts = {};
+    const uniquePartners = new Set();
+    confirmed.forEach(d => {
+        uniquePartners.add(d.partnerAlias);
+        partnerCounts[d.partnerAlias] = (partnerCounts[d.partnerAlias] || 0) + 1;
+    });
+
+    let favorite = "";
+    let maxCount = 0;
+    for (const [partner, count] of Object.entries(partnerCounts)) {
+        if (count > maxCount) {
+            maxCount = count;
+            favorite = partner;
+        }
+    }
+
+    return {
+        total: confirmed.length,
+        peak: `${pDay} ${pHour}:00`,
+        unique: uniquePartners.size,
+        favorite: favorite || "--"
+    };
+}
+
+function updateStatsUI(stats) {
+    document.getElementById('stat-total').innerText = stats.total;
+    document.getElementById('stat-peak').innerText = stats.peak;
+    document.getElementById('stat-unique').innerText = stats.unique;
+    document.getElementById('stat-favorite').innerText = stats.favorite;
+}
+
+function calculateAndDisplayStats() {
+    const updateBtn = document.getElementById('update-stats-container');
+
+    const frozen = localStorage.getItem('frozenStats');
+    if (frozen) {
+        updateStatsUI(JSON.parse(frozen));
+        if (updateBtn) {
+            updateBtn.classList.remove('hidden');
+            const p = updateBtn.querySelector('p');
+            if (p) p.innerText = "Stats are frozen at the time of feedback.";
+        }
+        return;
+    }
+
+    const stats = calculateStats(fullHistoryData);
+    updateStatsUI(stats);
+    if (updateBtn) {
+        updateBtn.classList.remove('hidden');
+        const p = updateBtn.querySelector('p');
+        if (p) p.innerText = "Viewing live stats. Submit feedback to save a snapshot.";
+    }
+}
+
+// /** --- STATS & REGISTRATION --- **/
+
+// function calculateStats(data) {
+//     const confirmed = data.filter(d => d.status === 'Confirmed');
+
+//     if (confirmed.length === 0) {
+//         return { total: 0, peak: "--", unique: 0, favorite: "--" };
+//     }
+
+//     // 2. Peak Hour (Day + Time)
+//     const timeSlots = confirmed.map(d => {
+//         const date = new Date(d.timestamp);
+//         const day = date.toLocaleDateString([], { weekday: 'short' });
+//         const hour = date.getHours();
+//         return `${day} ${hour}`; // e.g., "Mon 23"
+//     });
+
+//     const slotCounts = {};
+//     timeSlots.forEach(slot => { slotCounts[slot] = (slotCounts[slot] || 0) + 1; });
+//     const peakSlot = Object.keys(slotCounts).reduce((a, b) => slotCounts[a] > slotCounts[b] ? a : b);
+//     const [pDay, pHour] = peakSlot.split(' ');
+
+//     // 3. Unique Partners & Favorite Partner
+//     const partnerCounts = {};
+//     const uniquePartners = new Set();
+//     confirmed.forEach(d => {
+//         uniquePartners.add(d.partnerAlias);
+//         partnerCounts[d.partnerAlias] = (partnerCounts[d.partnerAlias] || 0) + 1;
+//     });
+
+//     let favorite = "";
+//     let maxCount = 0;
+//     for (const [partner, count] of Object.entries(partnerCounts)) {
+//         if (count > maxCount) {
+//             maxCount = count;
+//             favorite = partner;
+//         }
+//     }
+
+//     return {
+//         total: confirmed.length,
+//         peak: `${pDay} ${pHour}:00`,
+//         unique: uniquePartners.size,
+//         favorite: favorite || "--"
+//     };
+// }
+
+// function updateStatsUI(stats) {
+//     document.getElementById('stat-total').innerText = stats.total;
+//     document.getElementById('stat-peak').innerText = stats.peak;
+//     document.getElementById('stat-unique').innerText = stats.unique;
+//     document.getElementById('stat-favorite').innerText = stats.favorite;
+// }
+
+// function calculateAndDisplayStats() {
+//     const updateBtn = document.getElementById('update-stats-container');
+
+//     // 1. Check for Frozen Stats (Snapshot)
+//     const frozen = localStorage.getItem('frozenStats');
+//     if (frozen) {
+//         updateStatsUI(JSON.parse(frozen));
+//         if (updateBtn) {
+//             updateBtn.classList.remove('hidden');
+//             const p = updateBtn.querySelector('p');
+//             if (p) p.innerText = "Stats are frozen at the time of feedback.";
+//         }
+//         return;
+//     }
+
+//     // 2. Fallback: Calculate Live
+//     const stats = calculateStats(fullHistoryData);
+//     updateStatsUI(stats);
+//     if (updateBtn) {
+//         updateBtn.classList.remove('hidden');
+//         const p = updateBtn.querySelector('p');
+//         if (p) p.innerText = "Viewing live stats. Submit feedback to save a snapshot.";
+//     }
+// }

@@ -553,7 +553,7 @@ button.btn-locked {
 
 /* --- STAR RATING --- */
 .star-rating {
-    display: flex;
+    display: flex; /* Shrinks the container to exactly fit the stars */
     gap: 5px;
     margin: 10px 0 15px 0;
 }

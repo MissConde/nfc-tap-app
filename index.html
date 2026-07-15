@@ -1,13 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 
+<!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dance Tracker PWA</title>
+    <title>Festidance Tracker</title>
     <link rel="stylesheet" href="style.css">
-    <script src="app.js" defer></script>
-    <link rel="apple-touch-icon" href="assets/kwanza_icon_192.png">
+    
+    <script type="module" src="app.js"></script>
+    
     <link rel="apple-touch-icon" href="assets/kwanza_icon_192.png">
 </head>
 
@@ -58,11 +61,8 @@
 
                 <div class="input-group">
                     <select id="country" required
-                        style="width:100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem; color: var(--text-primary); appearance: none; background: #fff url('data:image/svg+xml;utf8,<svg xmlns="
-                        http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                        stroke="%23666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="6 9 12 15 18 9"></polyline></svg>') no-repeat right 10px center;
-                        background-size: 16px;">
+                        style="width:100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem; color: var(--text-primary); appearance: none; background: #fff url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%23666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline></svg>') no-repeat right 10px center; background-size: 16px;">
                         <option value="" disabled selected>Select Your Country</option>
                         <option value="AF">Afghanistan</option>
                         <option value="AL">Albania</option>
@@ -221,8 +221,8 @@
                     <input type="text" id="igUser" placeholder="Instagram User (Optional)">
                 </div>
 
-                <p style="margin-bottom: 8px; font-weight: bold; color: var(--text-secondary);">Your Role:</p>
-                <div class="role-container">
+               <p style="margin-bottom: 8px; font-weight: bold; color: var(--text-secondary);">Your Role:</p>
+               <div class="role-container">
                     <button type="button" class="role-btn" id="btn-leader"
                         onclick="selectRole('Leader')">Leader</button>
                     <button type="button" class="role-btn" id="btn-follower"
@@ -230,6 +230,13 @@
                 </div>
                 <input type="hidden" id="role" required>
                 <span id="role-error" class="error-msg">Please select a role</span>
+                
+                <div class="input-group" style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border-color);">
+                    <p style="margin-bottom: 8px; font-weight: bold; color: var(--text-primary);">Break the ice 🧊</p>
+                    <textarea id="confession" rows="2" 
+                        style="width:100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-family: inherit; resize: none;" 
+                        placeholder="Dance confession (e.g., I secretly close my eyes during UrbanKiz...)"></textarea>
+                </div>
 
                 <p class="legal-text">By continuing, you agree to share your data with organizers.</p>
 

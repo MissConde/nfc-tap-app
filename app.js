@@ -757,10 +757,20 @@ function calculateStats(data) {
 }
 
 function updateStatsUI(stats) {
-    document.getElementById('stat-total').innerText = stats.total;
-    document.getElementById('stat-peak').innerText = stats.peak;
-    document.getElementById('stat-unique').innerText = stats.unique;
-    document.getElementById('stat-favorite').innerText = stats.favorite;
+    const grid = document.querySelector('.stat-grid');
+    const empty = document.getElementById('stats-empty');
+
+    if (stats.total === 0) {
+        if (grid) grid.classList.add('hidden');
+        if (empty) empty.classList.remove('hidden');
+    } else {
+        if (grid) grid.classList.remove('hidden');
+        if (empty) empty.classList.add('hidden');
+        document.getElementById('stat-total').innerText = stats.total;
+        document.getElementById('stat-peak').innerText = stats.peak;
+        document.getElementById('stat-unique').innerText = stats.unique;
+        document.getElementById('stat-favorite').innerText = stats.favorite;
+    }
 }
 
 function calculateAndDisplayStats() {

@@ -177,13 +177,36 @@ export async function getHistory(my_id) {
     });
 }
 
-export async function updateDanceStatus(rowId, status) {
-    const { error } = await supabase
+export async function confirmDance(rowId) {
+    const { data, error } = await supabase
         .from('interactions')
-        .update({ status })
-        .eq('id', rowId);
+        .update({ status: 'Confirmed' })
+        .eq('id', rowId)
+        .eq('status', 'Pending')     // only confirm if still pending
+        .select('id');
     if (error) throw error;
-    return true;
+    if (data && data.length > 0) return { success: true };
+
+    // Nothing updated → find out why
+    const { data: row } = await supabase
+        .from('interactions').select('status').eq('id', rowId).maybeSingle();
+    return { success: false, currentStatus: row ? row.status : 'Deleted' };
+}
+
+export async function cancelDance(rowId) {
+    const { data, error } = await supabase
+        .from('interactions')
+        .update({ status: 'Cancelled' })
+        .eq('id', rowId)
+        .eq('status', 'Pending')     // only cancel if still pending
+        .select('id');
+    if (error) throw error;
+    if (data && data.length > 0) return { success: true };
+
+    // Nothing updated → find out why
+    const { data: row } = await supabase
+        .from('interactions').select('status').eq('id', rowId).maybeSingle();
+    return { success: false, currentStatus: row ? row.status : 'Deleted' };
 }
 
 // --- FEEDBACK FUNCTIONS ---

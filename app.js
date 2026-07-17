@@ -203,9 +203,17 @@ async function handleAutoLogWithAutoClose(myID, partnerID) {
 window.confirmDanceManually = async function (rowId) {
     showStatus('loading', 'Confirming...', 'Please wait.');
     try {
-        await db.updateDanceStatus(rowId, 'Confirmed');
-        showStatus('success', 'Confirmed', 'Dance added to your history.');
-        loadDancerView();
+        const res = await db.confirmDance(rowId);
+        if (res.success) {
+            showStatus('success', 'Confirmed', 'Dance added to your history.');
+        } else if (res.currentStatus === 'Cancelled') {
+            showStatus('error', 'Not possible', 'This dance was cancelled by your partner.');
+        } else if (res.currentStatus === 'Confirmed') {
+            showStatus('info', 'Already confirmed', 'This dance was already confirmed.');
+        } else {
+            showStatus('error', 'Not possible', 'This dance is no longer pending.');
+        }
+        setTimeout(() => loadDancerView(true), 2500);
     } catch (e) {
         console.error("Confirm failed:", e);
         showStatus('error', 'Error', 'Could not confirm.');
@@ -217,9 +225,17 @@ window.cancelDance = async function (rowId) {
     if (confirmed) {
         showStatus('loading', 'Deleting...', 'Please wait.');
         try {
-            await db.updateDanceStatus(rowId, 'Cancelled');
-            showStatus('success', 'Deleted', 'Log removed.');
-            loadDancerView();
+            const res = await db.cancelDance(rowId);
+            if (res.success) {
+                showStatus('success', 'Deleted', 'Log removed.');
+            } else if (res.currentStatus === 'Confirmed') {
+                showStatus('error', 'Too late', 'Your partner already confirmed this dance.');
+            } else if (res.currentStatus === 'Cancelled') {
+                showStatus('info', 'Already deleted', 'This dance was already removed.');
+            } else {
+                showStatus('error', 'Not possible', 'This dance is no longer pending.');
+            }
+            setTimeout(() => loadDancerView(true), 2500);
         } catch (e) {
             console.error("Cancel failed:", e);
             showStatus('error', 'Error', 'Failed to delete.');

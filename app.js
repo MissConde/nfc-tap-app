@@ -1,6 +1,3 @@
-/**
- * app.js - UI Controller & State Management (Supabase Edition)
- */
 import * as db from './db.js';
 
 const urlParams = new URLSearchParams(window.location.search);
@@ -16,7 +13,7 @@ if (idFromURL) {
 const activeChipId = idFromURL || localStorage.getItem('pending_chip_id');
 
 window.onload = async () => {
-    // 1. Force the app to wait for the secure connection to finish FIRST
+    // Force the app to wait for the secure connection to finish FIRST
     if (db.initializeDatabaseConnection) {
         await db.initializeDatabaseConnection();
     }
@@ -50,6 +47,19 @@ window.onload = async () => {
     });
 };
 
+/** --- SECURITY / TEXT HELPERS --- **/
+
+// Escapes user-generated content (aliases, confessions) before injecting into HTML.
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 /** --- DATA LOADING & REFRESH --- **/
 
 async function loadDancerView(silent = false) {
@@ -67,7 +77,6 @@ async function loadDancerView(silent = false) {
     }
 
     try {
-        // CALLING SUPABASE LAYER
         fullHistoryData = await db.getHistory(user.chip_id);
         localStorage.setItem('cachedHistory', JSON.stringify(fullHistoryData));
 
@@ -95,12 +104,48 @@ async function loadDancerView(silent = false) {
         console.error("Failed to load view", e);
         if (!cachedHistory) showStatus('error', 'No Connection', 'Could not load your profile.');
     }
+
+    // Lazy-load the current confession into the editor (non-blocking)
+    loadConfessionEditor(user.chip_id);
 }
+
+async function loadConfessionEditor(chip_id) {
+    const box = document.getElementById('confession-edit');
+    if (!box || box.dataset.loaded === "1") return;
+    try {
+        const current = await db.getConfession(chip_id);
+        box.value = current;
+        box.dataset.loaded = "1";
+    } catch (e) {
+        console.warn("Could not load confession:", e);
+    }
+}
+
+window.saveConfession = async function () {
+    const user = JSON.parse(localStorage.getItem('danceAppUser'));
+    const box = document.getElementById('confession-edit');
+    if (!user || !box) return;
+
+    const btn = document.getElementById('save-confession-btn');
+    if (btn) { btn.disabled = true; btn.innerText = 'Saving...'; }
+
+    try {
+        await db.updateConfession(user.chip_id, box.value.trim());
+        showStatus('success', 'Saved!', 'Your ice-breaker is updated.');
+    } catch (e) {
+        console.error("Confession save failed:", e);
+        showStatus('error', 'Error', 'Could not save. Try again.');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerText = 'Save Ice-Breaker'; }
+    }
+};
 
 function renderUserProfile(user) {
     document.getElementById('displayName').innerText = user.alias;
     const roleEmoji = user.role === 'Leader' ? '🕺' : (user.role === 'Follower' ? '💃' : '✨');
-    const metaStr = user.country ? `🌍 ${user.country} &nbsp;|&nbsp; ${roleEmoji} ${user.role}` : `${roleEmoji} ${user.role}`;
+    const metaStr = user.country
+        ? `🌍 ${escapeHtml(user.country)} &nbsp;|&nbsp; ${roleEmoji} ${escapeHtml(user.role)}`
+        : `${roleEmoji} ${escapeHtml(user.role)}`;
     document.getElementById('displayMeta').innerHTML = metaStr;
 }
 
@@ -112,8 +157,17 @@ async function handleAutoLogWithAutoClose(myID, partnerID) {
     document.getElementById('auto-close-status').innerText = "Logging dance...";
 
     try {
-        // CALLING SUPABASE LAYER
         const result = await db.logDance(myID, partnerID);
+
+        // FIX: these were previously undefined, crashing the success screens.
+        const alias = escapeHtml(result.partnerAlias || "your partner");
+        const confessionHtml = result.confession
+            ? `<div style="margin-top:15px; padding:12px; background:rgba(56,189,248,0.12);
+                        border:1px dashed var(--secondary); border-radius:10px;
+                        font-size:0.9rem; color:var(--text-secondary); text-align:left;">
+                    🧊 <i>"${escapeHtml(result.confession)}"</i>
+               </div>`
+            : "";
 
         if (result.status === "Unregistered") {
             document.getElementById('auto-close-view').innerHTML = `
@@ -139,6 +193,7 @@ async function handleAutoLogWithAutoClose(myID, partnerID) {
             setTimeout(() => window.close(), 2500);
         }
     } catch (e) {
+        console.error("logDance failed:", e);
         document.getElementById('auto-close-view').innerHTML = `
             <h2>❌ Network Error</h2><p>Could not connect to the server.</p>
             <button class="primary-btn" onclick="window.close()" style="margin-top:20px;">Close Tab</button>`;
@@ -152,6 +207,7 @@ window.confirmDanceManually = async function (rowId) {
         showStatus('success', 'Confirmed', 'Dance added to your history.');
         loadDancerView();
     } catch (e) {
+        console.error("Confirm failed:", e);
         showStatus('error', 'Error', 'Could not confirm.');
     }
 };
@@ -165,6 +221,7 @@ window.cancelDance = async function (rowId) {
             showStatus('success', 'Deleted', 'Log removed.');
             loadDancerView();
         } catch (e) {
+            console.error("Cancel failed:", e);
             showStatus('error', 'Error', 'Failed to delete.');
         }
     }
@@ -199,6 +256,7 @@ async function checkUserInSystem(id) {
             showView('registration-view');
         }
     } catch (e) {
+        console.error("checkUser failed:", e);
         showView('scan-view');
         showStatus('error', 'Connection Error', 'Please tap again.');
     }
@@ -241,13 +299,14 @@ document.getElementById('regForm').onsubmit = async (e) => {
             location.reload();
         }, 2000);
     } catch (error) {
+        console.error("Registration failed:", error);
         showStatus('error', 'Failed', 'Try linking again.');
+        submitBtn.innerText = "Link My Chip";
         submitBtn.disabled = false;
     }
 };
 
 /** --- UTILS, UI & GLOBAL EXPORTS --- **/
-// (Keeping your exact UI logic intact, just exposing HTML functions)
 
 function showView(viewId) {
     ['scan-view', 'registration-view', 'dancer-view', 'organizer-view', 'auto-close-view', 'android-success-view'].forEach(id => {
@@ -305,7 +364,8 @@ function confirmAction(title, msg, confirmText = "Confirm", cancelText = "Cancel
         secondaryBtn.onclick = () => cleanup(false);
     });
 }
-// Converting 'ES' en 🇪🇸
+
+// Converting 'ES' to 🇪🇸
 function getFlagEmoji(countryCode) {
     if (!countryCode) return '';
     const codePoints = countryCode.toUpperCase().split('').map(char => 127397 + char.charCodeAt(0));
@@ -339,8 +399,9 @@ function renderHistoryTable(data) {
                 </div>`;
         }
 
+        const safeAlias = escapeHtml(row.partnerAlias);
         const flag = getFlagEmoji(row.partnerCountry);
-        const aliasDisplay = flag ? `<span style="font-size:1.1em; margin-right:4px;">${flag}</span> ${row.partnerAlias}` : row.partnerAlias;
+        const aliasDisplay = flag ? `<span style="font-size:1.1em; margin-right:4px;">${flag}</span> ${safeAlias}` : safeAlias;
 
         return `<tr>
             <td><strong>${aliasDisplay}</strong></td>
@@ -424,26 +485,24 @@ window.validateFeedbackForm = function () {
 };
 
 window.handleStarTouch = function (e, qId) {
-    if (e.type === 'touchmove') e.preventDefault(); 
+    if (e.type === 'touchmove') e.preventDefault();
 
     let rating = 0;
 
     if (e.type === 'click') {
-        // If clicked, find exactly which star was clicked
         const star = e.target.closest('.star-icon');
-        if (!star) return; 
+        if (!star) return;
         rating = parseInt(star.getAttribute('data-val'), 10);
-    } 
+    }
     else if (e.type === 'touchmove') {
-        // If swiping, find exactly which star is under the finger
         const touch = e.touches[0];
         const elementUnderFinger = document.elementFromPoint(touch.clientX, touch.clientY);
-        
+
         if (!elementUnderFinger || !elementUnderFinger.classList.contains('star-icon')) return;
         rating = parseInt(elementUnderFinger.getAttribute('data-val'), 10);
     }
 
-    if (!rating || rating < 1 || rating > 5) return;
+    if (!rating || rating < 1) return;
 
     // 1. Set the hidden input value
     const input = document.getElementById(`q_${qId}`);
@@ -452,7 +511,7 @@ window.handleStarTouch = function (e, qId) {
     // 2. Instantly update the visual UI
     const container = document.getElementById(`stars_${qId}`);
     const stars = container.querySelectorAll('.star-icon');
-    
+
     stars.forEach((starEl, index) => {
         if (index < rating) {
             starEl.classList.add('active');
@@ -472,7 +531,7 @@ function renderDynamicFeedback(template) {
     template.forEach(q => {
         if (q.category && q.category !== currentCategory) {
             currentCategory = q.category;
-            html += `<h4 class="form-category-header">${currentCategory}</h4>`;
+            html += `<h4 class="form-category-header">${escapeHtml(currentCategory)}</h4>`;
         }
 
         let inputHtml = '';
@@ -491,22 +550,22 @@ function renderDynamicFeedback(template) {
             }
 
             inputHtml = `
-            <div class="star-rating" id="stars_${q.id}" 
-                 ontouchmove="handleStarTouch(event, '${q.id}', ${maxStars})"
-                 onclick="handleStarTouch(event, '${q.id}', ${maxStars})">
+            <div class="star-rating" id="stars_${q.id}"
+                 ontouchmove="handleStarTouch(event, '${q.id}')"
+                 onclick="handleStarTouch(event, '${q.id}')">
                 ${starsHtml}
             </div>
             <input type="hidden" id="q_${q.id}">
             `;
         } else if (q.type === 'select') {
-            // FIX: Convert Supabase TEXT string to an Array
+            // Convert Supabase TEXT string into an Array
             let optionsArray = [];
             if (q.options) {
                 optionsArray = typeof q.options === 'string' ? q.options.split(',').map(s => s.trim()) : [];
             }
             inputHtml = `<select id="q_${q.id}" ${q.required ? 'required' : ''}>
                 <option value="" disabled selected>Select...</option>
-                ${optionsArray.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                ${optionsArray.map(opt => `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`).join('')}
             </select>`;
         } else if (q.type === 'textarea') {
             inputHtml = `<textarea id="q_${q.id}" rows="2" ${q.required ? 'required' : ''}></textarea>`;
@@ -517,7 +576,7 @@ function renderDynamicFeedback(template) {
         html += `
             <div class="input-group" style="margin-bottom: 20px;">
                 <label style="font-weight:bold; font-size: 0.85rem; color: var(--text-primary);">
-                    ${q.label} ${q.required ? '<span style="color:var(--error)">*</span>' : ''}
+                    ${escapeHtml(q.label)} ${q.required ? '<span style="color:var(--error)">*</span>' : ''}
                 </label>
                 ${inputHtml}
             </div>`;
@@ -534,7 +593,31 @@ function renderDynamicFeedback(template) {
     validateFeedbackForm();
 }
 
-window.showFeedbackForm = async function () {
+// Pre-fill previously submitted answers (used when redoing feedback)
+function prefillFeedback(existing) {
+    if (!existing) return;
+    currentFeedbackTemplate.forEach(q => {
+        const value = existing[q.id];
+        if (value === null || value === undefined || value === "") return;
+
+        const input = document.getElementById(`q_${q.id}`);
+        if (!input) return;
+        input.value = value;
+
+        // Repaint stars for scale questions
+        if (q.type === 'scale') {
+            const container = document.getElementById(`stars_${q.id}`);
+            if (container) {
+                container.querySelectorAll('.star-icon').forEach((starEl, index) => {
+                    starEl.classList.toggle('active', index < Number(value));
+                });
+            }
+        }
+    });
+    validateFeedbackForm();
+}
+
+window.showFeedbackForm = async function (prefill = false) {
     showStatus('loading', 'Loading Survey', 'Please wait...');
     try {
         if (currentFeedbackTemplate.length === 0) {
@@ -542,8 +625,18 @@ window.showFeedbackForm = async function () {
         }
         document.getElementById('master-overlay').classList.add('hidden');
         renderDynamicFeedback(currentFeedbackTemplate);
+
+        if (prefill) {
+            const user = JSON.parse(localStorage.getItem('danceAppUser'));
+            if (user) {
+                const existing = await db.getUserFeedback(user.chip_id);
+                prefillFeedback(existing);
+            }
+        }
+
         document.getElementById('feedback-overlay').classList.remove('hidden');
     } catch (e) {
+        console.error("Feedback template load failed:", e);
         showStatus('error', 'Error', 'Could not load form.');
     }
 };
@@ -554,8 +647,8 @@ window.hideFeedback = function () {
 
 window.redoFeedback = function () {
     localStorage.removeItem('frozenStats');
-    currentFeedbackTemplate = []; 
-    window.showFeedbackForm();
+    currentFeedbackTemplate = [];
+    window.showFeedbackForm(true); // pre-fill with previous answers
 };
 
 document.getElementById('feedbackForm').onsubmit = async (e) => {
@@ -567,15 +660,11 @@ document.getElementById('feedbackForm').onsubmit = async (e) => {
     submitBtn.disabled = true;
     submitBtn.innerText = 'Submitting...';
 
-    // Collect answers from the template
+    // Collect answers keyed by q.id, which must match the feedback table columns
     const feedbackData = {};
     currentFeedbackTemplate.forEach(q => {
         const el = document.getElementById(`q_${q.id}`);
-        
-        // Ensure the element exists and is not empty before saving
         if (el && el.value !== "") {
-            // FIX 1: Use q.id directly so it matches Supabase columns perfectly
-            // FIX 2: Convert scale values into true Integers
             if (q.type === 'scale' || q.type === 'number') {
                 feedbackData[q.id] = parseInt(el.value, 10);
             } else {
@@ -597,54 +686,15 @@ document.getElementById('feedbackForm').onsubmit = async (e) => {
 
         setTimeout(() => loadDancerView(), 2000);
     } catch (err) {
-        // Logs the exact Supabase error to your browser console so you can see what failed
-        console.error("Supabase Submission Error:", err); 
-        
+        // Exact Supabase error in the browser console (e.g. missing column,
+        // permission denied for sequence, etc.)
+        console.error("Supabase Submission Error:", err);
+
         showStatus('error', 'Error', 'Could not submit feedback. Try again.');
         submitBtn.disabled = false;
         submitBtn.innerText = 'Submit & Unlock Highlights';
     }
 };
-
-// // SINGLE SUBMIT HANDLER
-// document.getElementById('feedbackForm').onsubmit = async (e) => {
-//     e.preventDefault();
-//     const user = JSON.parse(localStorage.getItem('danceAppUser'));
-//     if (!user) return;
-
-//     const submitBtn = document.getElementById('feedbackSubmitBtn');
-//     submitBtn.disabled = true;
-//     submitBtn.innerText = 'Submitting...';
-
-//     // Gather answers specifically mapped to Supabase column names
-//     const feedbackData = {};
-//     currentFeedbackTemplate.forEach(q => {
-//         const el = document.getElementById(`q_${q.id}`);
-//         if (el && el.value !== "") {
-//             // Ensure numeric values are cast to integers for Supabase INTEGER columns
-//             feedbackData[q.id] = (q.type === 'scale' || q.type === 'number') ? Number(el.value) : el.value;
-//         }
-//     });
-
-//     try {
-//         await db.submitFeedback(user.chip_id, feedbackData);
-
-//         // Freeze stats snapshot then unlock
-//         const snapshot = calculateStats(fullHistoryData);
-//         localStorage.setItem('frozenStats', JSON.stringify(snapshot));
-//         localStorage.setItem('lastFeedback', JSON.stringify({ submitted: true }));
-
-//         window.hideFeedback();
-//         showStatus('success', 'Thank you! 🎉', 'Your stats are now unlocked.');
-
-//         setTimeout(() => loadDancerView(), 2000);
-//     } catch (err) {
-//         console.error("Submit Error:", err);
-//         showStatus('error', 'Error', 'Could not submit feedback. Try again.');
-//         submitBtn.disabled = false;
-//         submitBtn.innerText = 'Submit & Unlock Highlights';
-//     }
-// };
 
 /** --- STATS LOGIC --- **/
 
@@ -659,7 +709,7 @@ function calculateStats(data) {
         const date = new Date(d.timestamp);
         const day = date.toLocaleDateString([], { weekday: 'short' });
         const hour = date.getHours();
-        return `${day} ${hour}`; 
+        return `${day} ${hour}`;
     });
 
     const slotCounts = {};
@@ -720,82 +770,3 @@ function calculateAndDisplayStats() {
         if (p) p.innerText = "Viewing live stats. Submit feedback to save a snapshot.";
     }
 }
-
-// /** --- STATS & REGISTRATION --- **/
-
-// function calculateStats(data) {
-//     const confirmed = data.filter(d => d.status === 'Confirmed');
-
-//     if (confirmed.length === 0) {
-//         return { total: 0, peak: "--", unique: 0, favorite: "--" };
-//     }
-
-//     // 2. Peak Hour (Day + Time)
-//     const timeSlots = confirmed.map(d => {
-//         const date = new Date(d.timestamp);
-//         const day = date.toLocaleDateString([], { weekday: 'short' });
-//         const hour = date.getHours();
-//         return `${day} ${hour}`; // e.g., "Mon 23"
-//     });
-
-//     const slotCounts = {};
-//     timeSlots.forEach(slot => { slotCounts[slot] = (slotCounts[slot] || 0) + 1; });
-//     const peakSlot = Object.keys(slotCounts).reduce((a, b) => slotCounts[a] > slotCounts[b] ? a : b);
-//     const [pDay, pHour] = peakSlot.split(' ');
-
-//     // 3. Unique Partners & Favorite Partner
-//     const partnerCounts = {};
-//     const uniquePartners = new Set();
-//     confirmed.forEach(d => {
-//         uniquePartners.add(d.partnerAlias);
-//         partnerCounts[d.partnerAlias] = (partnerCounts[d.partnerAlias] || 0) + 1;
-//     });
-
-//     let favorite = "";
-//     let maxCount = 0;
-//     for (const [partner, count] of Object.entries(partnerCounts)) {
-//         if (count > maxCount) {
-//             maxCount = count;
-//             favorite = partner;
-//         }
-//     }
-
-//     return {
-//         total: confirmed.length,
-//         peak: `${pDay} ${pHour}:00`,
-//         unique: uniquePartners.size,
-//         favorite: favorite || "--"
-//     };
-// }
-
-// function updateStatsUI(stats) {
-//     document.getElementById('stat-total').innerText = stats.total;
-//     document.getElementById('stat-peak').innerText = stats.peak;
-//     document.getElementById('stat-unique').innerText = stats.unique;
-//     document.getElementById('stat-favorite').innerText = stats.favorite;
-// }
-
-// function calculateAndDisplayStats() {
-//     const updateBtn = document.getElementById('update-stats-container');
-
-//     // 1. Check for Frozen Stats (Snapshot)
-//     const frozen = localStorage.getItem('frozenStats');
-//     if (frozen) {
-//         updateStatsUI(JSON.parse(frozen));
-//         if (updateBtn) {
-//             updateBtn.classList.remove('hidden');
-//             const p = updateBtn.querySelector('p');
-//             if (p) p.innerText = "Stats are frozen at the time of feedback.";
-//         }
-//         return;
-//     }
-
-//     // 2. Fallback: Calculate Live
-//     const stats = calculateStats(fullHistoryData);
-//     updateStatsUI(stats);
-//     if (updateBtn) {
-//         updateBtn.classList.remove('hidden');
-//         const p = updateBtn.querySelector('p');
-//         if (p) p.innerText = "Viewing live stats. Submit feedback to save a snapshot.";
-//     }
-// }

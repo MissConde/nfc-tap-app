@@ -1,16 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 
-<!DOCTYPE html>
-<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Festidance Tracker</title>
     <link rel="stylesheet" href="style.css">
-    
+
     <script type="module" src="app.js"></script>
-    
+
     <link rel="apple-touch-icon" href="assets/kwanza_icon_192.png">
 </head>
 
@@ -29,7 +27,7 @@
             <h2 id="auto-close-status">Logging dance...</h2>
         </div>
 
-        <!-- NEW ANDROID NATIVE SUCCESS TAP UI -->
+        <!-- ANDROID NATIVE SUCCESS TAP UI -->
         <div id="android-success-view" class="card hidden" style="text-align:center; padding: 40px 20px;">
             <div id="android-success-icon" style="font-size:4rem; margin-bottom:10px;">✅</div>
             <h2 id="android-success-title" style="color:var(--success);">Dance Logged!</h2>
@@ -221,8 +219,8 @@
                     <input type="text" id="igUser" placeholder="Instagram User (Optional)">
                 </div>
 
-               <p style="margin-bottom: 8px; font-weight: bold; color: var(--text-secondary);">Your Role:</p>
-               <div class="role-container">
+                <p style="margin-bottom: 8px; font-weight: bold; color: var(--text-secondary);">Your Role:</p>
+                <div class="role-container">
                     <button type="button" class="role-btn" id="btn-leader"
                         onclick="selectRole('Leader')">Leader</button>
                     <button type="button" class="role-btn" id="btn-follower"
@@ -230,11 +228,12 @@
                 </div>
                 <input type="hidden" id="role" required>
                 <span id="role-error" class="error-msg">Please select a role</span>
-                
-                <div class="input-group" style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border-color);">
+
+                <div class="input-group"
+                    style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border-color);">
                     <p style="margin-bottom: 8px; font-weight: bold; color: var(--text-primary);">Break the ice 🧊</p>
-                    <textarea id="confession" rows="2" 
-                        style="width:100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-family: inherit; resize: none;" 
+                    <textarea id="confession" rows="2"
+                        style="width:100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-family: inherit; resize: none;"
                         placeholder="Dance confession (e.g., I secretly close my eyes during UrbanKiz...)"></textarea>
                 </div>
 
@@ -320,7 +319,7 @@
                         </div>
                     </div>
 
-                    <!-- NEW UPDATE STATS SECTION -->
+                    <!-- UPDATE STATS SECTION -->
                     <div id="update-stats-container" class="hidden" style="text-align: center; margin-top: 20px;">
                         <p style="font-size: 0.8rem; color: #888; margin-bottom: 10px;">Stats are frozen at the time of
                             feedback.</p>
@@ -331,6 +330,21 @@
                     </div>
 
                 </div>
+            </div>
+
+            <!-- NEW: EDITABLE ICE-BREAKER / CONFESSION -->
+            <div class="card" id="confession-card">
+                <h3 style="margin-bottom: 5px;">🧊 My Ice-Breaker</h3>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0 0 10px 0;">
+                    Shown to your partner when you match. Keep it fun!
+                </p>
+                <textarea id="confession-edit" rows="2" maxlength="140"
+                    style="width:100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-family: inherit; resize: none;"
+                    placeholder="e.g., I secretly close my eyes during UrbanKiz..."></textarea>
+                <button class="secondary-btn" id="save-confession-btn" onclick="saveConfession()"
+                    style="font-size: 0.75rem; padding: 10px; height: auto;">
+                    Save Ice-Breaker
+                </button>
             </div>
 
             <div id="unlink-section" class="card"
@@ -391,6 +405,7 @@
                 </div>
             </div>
         </div>
+    </div>
 </body>
 
 </html>

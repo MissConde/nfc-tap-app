@@ -374,9 +374,9 @@ button.btn-locked {
 .stat-value {
     font-size: 1.5rem;
     font-weight: 800;
-    color: var(--text-secondary)
-        /* Pure white for maximum contrast on mobile */
-        margin-bottom: 2px;
+    color: var(--text-secondary);
+    /* Pure white for maximum contrast on mobile */
+    margin-bottom: 2px;
 }
 
 .stat-label {

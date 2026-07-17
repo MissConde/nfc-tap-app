@@ -6,7 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Dance Tracker Admin</title>
     <link rel="stylesheet" href="style.css">
-    <script src="admin.js" defer></script>
+    <!-- IMPORTANT: type="module" is required so admin.js can import db.js (Supabase) -->
+    <script type="module" src="admin.js"></script>
 </head>
 
 <body>
@@ -44,8 +45,12 @@
         <div id="organizer-view" class="hidden">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h2 style="margin:0;">Organizer Dashboard</h2>
-                <button class="secondary-btn btn-sm" onclick="location.href='index.html'"
-                    style="width: auto; padding: 5px 10px;">EXIT</button>
+                <div style="display:flex; gap:8px;">
+                    <button class="secondary-btn btn-sm btn-filled" onclick="fetchAdminStats()"
+                        style="width: auto; padding: 5px 10px;">🔄 Refresh</button>
+                    <button class="secondary-btn btn-sm" onclick="location.href='index.html'"
+                        style="width: auto; padding: 5px 10px;">EXIT</button>
+                </div>
             </div>
 
             <!-- TAB NAVIGATION -->
@@ -61,14 +66,6 @@
             </button>
 
             <div id="tab-pulse" class="admin-tab-content active">
-                <!-- REFRESH ACTION -->
-                <!-- <div style="text-align:center; margin-bottom: 15px;">
-                    <button class="secondary-btn btn-filled" onclick="fetchAdminStats()"
-                        style="width:auto; padding: 8px 25px; font-size: 0.85rem; border-radius:20px; text-transform:none;">
-                        🔄 Refresh Data
-                    </button>
-                </div> -->
-
                 <div class="admin-grid admin-grid-3">
                     <div class="card stat-summary-card">
                         <h3>👥 Registered Users</h3>
@@ -113,8 +110,6 @@
                     <div class="card scrollable-admin-card">
                         <div class="card-header">
                             <h3>🔥 Live Feed</h3>
-                            <!-- <button class="secondary-btn btn-sm" onclick="fetchAdminStats()"
-                                style="width:auto; height:30px; font-size:0.7rem; padding:0 10px;">Refresh</button> -->
                         </div>
                         <div class="scroll-area">
                             <ul id="live-feed-list" class="admin-list">
@@ -178,7 +173,7 @@
                     <div style="margin-bottom: 20px;">
                         <label style="font-size:0.85rem; font-weight:bold; color:#444;">Dancer Lookup</label>
                         <div style="display:flex; gap:10px; margin-top:5px;">
-                            <input type="text" id="admin-search-input" placeholder="Enter Alias..."
+                            <input type="text" id="admin-search-input" placeholder="Enter Alias or Name..."
                                 style="margin:0; padding:10px;">
                             <button class="primary-btn" onclick="adminSearchDancer()"
                                 style="width:auto; padding:0 20px;">🔎</button>

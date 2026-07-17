@@ -1,20 +1,35 @@
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyyL1QO2a3T53Qu66qXfJv6K8C8_m-NNin5Zox4TZjDpdVfYy-k45W8VnvCKXD7ClCT/exec"; // Replace with actual URL if different
+/**
+ * admin.js - Organizer Dashboard (Supabase Edition)
+ *
+ * NOTE: this file must be loaded as <script type="module" src="admin.js">.
+ */
+import { supabase, initializeDatabaseConnection } from './db.js';
+
+const LOG_LIMIT = 2000; // Same safeguard as the old Apps Script version
 
 // --- ON LOAD ---
 document.addEventListener('DOMContentLoaded', () => {
     // Show login overlay immediately
     document.getElementById('admin-login-overlay').classList.remove('hidden');
-    document.getElementById('admin-pin-input').focus();
+    const input = document.getElementById('admin-pin-input');
+    input.focus();
+
+    // Allow Enter key to submit the PIN
+    input.addEventListener('keyup', (e) => {
+        if (e.key === 'Enter') window.submitAdminPin();
+    });
 });
 
 // --- ADMIN LOGIN ---
-window.submitAdminPin = function () {
+// NOTE: This is client-side obfuscation only, not real security. Anyone who
+// reads the JS can bypass it. For real per-event admins, use Supabase Auth
+// (email login) + RLS policies scoped by event.
+window.submitAdminPin = async function () {
     const input = document.getElementById('admin-pin-input');
     const pin = input.value;
 
     if (!pin) return;
 
-    // Simple Jenkins-like hash for client-side obfuscation
     const hashCode = s => s.split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a }, 0);
 
     // Hash for "2026" is 1537282
@@ -22,12 +37,12 @@ window.submitAdminPin = function () {
         document.getElementById('admin-login-overlay').classList.add('hidden');
         showStatus('success', 'Access Granted', 'Welcome to Admin Mode');
 
-        // Show Organizer View
         const view = document.getElementById('organizer-view');
         view.classList.remove('hidden');
         view.classList.add('fade-in');
 
-        // Fetch Data
+        // Establish the anonymous Supabase session, then fetch data
+        await initializeDatabaseConnection();
         fetchAdminStats();
     } else {
         document.getElementById('admin-login-error').style.display = 'block';
@@ -36,54 +51,163 @@ window.submitAdminPin = function () {
     }
 };
 
+// --- HELPERS ---
+
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function fmtTime(ts) {
+    const d = new Date(ts);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 // --- DATA FETCHING ---
 window.fetchAdminStats = async function () {
     const loadingOverlay = document.getElementById('admin-loading-overlay');
 
     try {
-        if (loadingOverlay) loadingOverlay.classList.remove('hidden'); // Show Loading
+        if (loadingOverlay) loadingOverlay.classList.remove('hidden');
 
-        const resp = await fetch(`${WEB_APP_URL}?action=getAdminStats`);
-        const data = await resp.json();
-        console.log("Admin Stats Data:", data);
+        // Fetch everything in parallel. feedback_config drives the actual
+        // column names on `feedback` (see db.js submitFeedback), so we select
+        // '*' here and resolve the scale-type question id(s) below instead of
+        // hardcoding a column name that could drift or not exist — a bad
+        // guess there would otherwise throw and take down the whole dashboard.
+        const [usersRes, feedbackRes, configRes, interRes] = await Promise.all([
+            supabase.from('users').select('chip_id, alias, role, country'),
+            supabase.from('feedback').select('*'),
+            supabase.from('feedback_config').select('id, type'),
+            supabase.from('interactions')
+                .select('timestamp, scanner_id, target_id, status')
+                .neq('status', 'Cancelled')
+                .order('timestamp', { ascending: false })
+                .limit(LOG_LIMIT)
+        ]);
+
+        if (usersRes.error) throw usersRes.error;
+        if (feedbackRes.error) throw feedbackRes.error;
+        if (interRes.error) throw interRes.error;
+        // A failed config lookup shouldn't take down the whole dashboard —
+        // fall back to scanning for any plausible 1-5 rating instead.
+        if (configRes.error) console.warn("Could not load feedback_config:", configRes.error);
+
+        const users = usersRes.data || [];
+        const feedback = feedbackRes.data || [];
+        const interactions = interRes.data || [];
+        const scaleIds = (configRes.data || [])
+            .filter(q => q.type === 'scale')
+            .map(q => q.id);
+
+        // --- Build lookup maps (was the aliasMap/roleMap in Apps Script) ---
+        const aliasMap = {};
+        const roleMap = {};
+        const uniqueCountries = new Set();
+        let leaderCount = 0;
+
+        users.forEach(u => {
+            aliasMap[u.chip_id] = u.alias;
+            roleMap[u.chip_id] = u.role;
+            if (u.country) uniqueCountries.add(u.country);
+            if (u.role === 'Leader') leaderCount++;
+        });
+
+        const totalDancers = users.length;
+        const percentLeaders = totalDancers > 0 ? Math.round((leaderCount / totalDancers) * 100) : 0;
+
+        // --- Feedback: count + average vibe ---
+        // Average every "scale" question found in feedback_config. Falls back
+        // to scanning each row for any plausible 1-5 rating if the config
+        // lookup failed or returned no scale questions, so a schema change
+        // never hard-breaks this number the way a hardcoded column name would.
+        let vibeSum = 0, vibeCount = 0;
+        feedback.forEach(row => {
+            const idsToCheck = scaleIds.length > 0
+                ? scaleIds
+                : Object.keys(row).filter(k => k !== 'chip_id' && k !== 'timestamp' && k !== 'id');
+
+            idsToCheck.forEach(id => {
+                const v = parseInt(row[id], 10);
+                if (!isNaN(v) && v >= 1 && v <= 5) { vibeSum += v; vibeCount++; }
+            });
+        });
+        const avgVibe = vibeCount > 0 ? (vibeSum / vibeCount).toFixed(1) : "N/A";
+        const feedbackCount = feedback.length;
+
+        // --- Interactions: live feed, top dancers, density ---
+        const oneHourAgo = Date.now() - 60 * 60 * 1000;
+        const topDancersMap = {};
+        const recentDances = [];
+        let dancesLastHour = 0;
+
+        interactions.forEach(row => {
+            const t = new Date(row.timestamp).getTime();
+            if (t > oneHourAgo) dancesLastHour++;
+
+            if (row.status === 'Confirmed') {
+                topDancersMap[row.scanner_id] = (topDancersMap[row.scanner_id] || 0) + 1;
+                topDancersMap[row.target_id] = (topDancersMap[row.target_id] || 0) + 1;
+
+                if (recentDances.length < 5) {
+                    recentDances.push({
+                        time: fmtTime(row.timestamp),
+                        pair: `${aliasMap[row.scanner_id] || "Unknown"} & ${aliasMap[row.target_id] || "Unknown"}`
+                    });
+                }
+            }
+        });
+
+        const topDancers = Object.keys(topDancersMap)
+            .map(id => ({
+                alias: aliasMap[id] || "Unknown",
+                role: roleMap[id] || "-",
+                count: topDancersMap[id]
+            }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
+
+        // --- RENDER (same DOM contract as before) ---
 
         // 1. Registered Users
         const elTotal = document.getElementById('pulse-count');
-        if (elTotal) elTotal.innerText = data.totalDancers || 0;
+        if (elTotal) elTotal.innerText = totalDancers;
 
         // 2. Role Balance
-        const leadPct = data.percentLeaders || 0;
-        const followPct = 100 - leadPct;
-
+        const followPct = 100 - percentLeaders;
         const elBar = document.getElementById('balance-bar');
         const elLeadPct = document.getElementById('role-lead-pct');
         const elFollowPct = document.getElementById('role-follow-pct');
-
-        if (elBar) elBar.style.width = `${leadPct}%`;
-        if (elLeadPct) elLeadPct.innerText = `${leadPct}%`;
+        if (elBar) elBar.style.width = `${percentLeaders}%`;
+        if (elLeadPct) elLeadPct.innerText = `${percentLeaders}%`;
         if (elFollowPct) elFollowPct.innerText = `${followPct}%`;
 
         // 2b. Vibe Score
         const fbScore = document.getElementById('feedback-vibe-score');
-        if (fbScore) fbScore.innerText = data.avgVibe || "N/A";
+        if (fbScore) fbScore.innerText = avgVibe;
 
         // 3. Feedback Completed
         const elFeedback = document.getElementById('feedback-completed-count');
-        if (elFeedback) elFeedback.innerText = data.feedbackCount || 0;
+        if (elFeedback) elFeedback.innerText = feedbackCount;
 
         // 3b. Diverse Countries
         const elCountry = document.getElementById('country-count');
-        if (elCountry) elCountry.innerText = data.uniqueCountries || 0;
+        if (elCountry) elCountry.innerText = uniqueCountries.size;
 
         // 4. Live Feed
         const elFeedList = document.getElementById('live-feed-list');
         if (elFeedList) {
-            if (!data.recentDances || data.recentDances.length === 0) {
+            if (recentDances.length === 0) {
                 elFeedList.innerHTML = '<li style="padding:10px; color:#999; text-align:center;">Quiet on the floor...</li>';
             } else {
-                elFeedList.innerHTML = data.recentDances.map(d => `
+                elFeedList.innerHTML = recentDances.map(d => `
                     <li style="padding: 10px 0; border-bottom: 1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-weight:500; color:#333;">${d.pair}</span>
+                        <span style="font-weight:500; color:#333;">${escapeHtml(d.pair)}</span>
                         <span style="font-size:0.8rem; color:#999;">${d.time}</span>
                     </li>
                 `).join('');
@@ -93,15 +217,15 @@ window.fetchAdminStats = async function () {
         // 5. Top Dancers
         const elTopList = document.getElementById('top-dancers-list');
         if (elTopList) {
-            if (!data.topDancers || data.topDancers.length === 0) {
+            if (topDancers.length === 0) {
                 elTopList.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:15px; color:#999;">No data yet</td></tr>';
             } else {
-                elTopList.innerHTML = data.topDancers.map((d, i) => `
+                elTopList.innerHTML = topDancers.map((d, i) => `
                     <tr style="border-bottom:1px solid #f0f0f0;">
                         <td style="padding:8px 0; font-weight:500;">
-                            ${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : ''} ${d.alias}
+                            ${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : ''} ${escapeHtml(d.alias)}
                         </td>
-                        <td style="padding:8px 0; font-size:0.85rem; color:#666;">${d.role}</td>
+                        <td style="padding:8px 0; font-size:0.85rem; color:#666;">${escapeHtml(d.role)}</td>
                         <td style="padding:8px 0; text-align:right; font-weight:bold; color:var(--primary);">${d.count}</td>
                     </tr>
                 `).join('');
@@ -112,7 +236,7 @@ window.fetchAdminStats = async function () {
         console.error("Failed to load admin stats", e);
         showStatus('error', 'Error', 'Failed to load dashboard data');
     } finally {
-        if (loadingOverlay) loadingOverlay.classList.add('hidden'); // Hide Loading
+        if (loadingOverlay) loadingOverlay.classList.add('hidden');
     }
 };
 
@@ -152,7 +276,6 @@ window.switchAdminTab = function (tabName) {
     target.classList.add('active');
 
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    // Simple active button logic
     const buttons = document.querySelectorAll('.tab-btn');
     if (tabName === 'pulse') buttons[0].classList.add('active');
     if (tabName === 'feedback') buttons[1].classList.add('active');
@@ -171,20 +294,29 @@ window.adminSearchDancer = async function () {
     resultBox.classList.remove('hidden');
 
     try {
-        const resp = await fetch(`${WEB_APP_URL}?action=adminSearch&query=${encodeURIComponent(query)}`);
-        const data = await resp.json();
+        // Case-insensitive partial match on alias or full name
+        const { data, error } = await supabase
+            .from('users')
+            .select('chip_id, alias, full_name, email, role, country')
+            .or(`alias.ilike.%${query}%,full_name.ilike.%${query}%`)
+            .limit(5);
 
-        if (data.found) {
-            resultBox.innerHTML = `
-                <div style="font-weight:bold; color:var(--primary);">${data.realName}</div>
-                <div style="font-size:0.9rem; color:#444; margin-top:2px;">Role: ${data.role}</div>
-                <div style="font-size:0.8rem; color:#666; margin-top:5px;">Email: <a href="mailto:${data.email}">${data.email}</a></div>
-                <div style="font-size:0.8rem; color:#666;">Chip: ${data.chipId}</div>
-            `;
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+            resultBox.innerHTML = data.map(u => `
+                <div style="padding:8px 0; border-bottom:1px solid #e0f2fe;">
+                    <div style="font-weight:bold; color:var(--primary);">${escapeHtml(u.full_name)} <span style="font-weight:normal; color:#666;">(${escapeHtml(u.alias)})</span></div>
+                    <div style="font-size:0.9rem; color:#444; margin-top:2px;">Role: ${escapeHtml(u.role)} · ${escapeHtml(u.country || '')}</div>
+                    <div style="font-size:0.8rem; color:#666; margin-top:5px;">Email: <a href="mailto:${escapeHtml(u.email)}">${escapeHtml(u.email)}</a></div>
+                    <div style="font-size:0.8rem; color:#666;">Chip: ${escapeHtml(u.chip_id)}</div>
+                </div>
+            `).join('');
         } else {
             resultBox.innerHTML = '<span style="color:var(--error);">Dancer not found.</span>';
         }
     } catch (e) {
+        console.error("Admin search failed:", e);
         resultBox.innerHTML = '<span style="color:var(--error);">Search failed.</span>';
     }
 };

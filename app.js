@@ -94,10 +94,8 @@ async function loadDancerView(silent = false) {
             document.getElementById('stats-content').classList.remove('hidden');
             calculateAndDisplayStats();
 
-            if (!window._historyInitialized) {
-                toggleHistory(true);
-                window._historyInitialized = true;
-            }
+            const histPref = localStorage.getItem('historyVisible');
+            applyHistoryVisibility(histPref === '1');
             document.getElementById('toggle-history-btn').classList.remove('hidden');
         }
     } catch (e) {
@@ -203,9 +201,17 @@ async function handleAutoLogWithAutoClose(myID, partnerID) {
 window.confirmDanceManually = async function (rowId) {
     showStatus('loading', 'Confirming...', 'Please wait.');
     try {
-        await db.updateDanceStatus(rowId, 'Confirmed');
-        showStatus('success', 'Confirmed', 'Dance added to your history.');
-        loadDancerView();
+        const res = await db.confirmDance(rowId);
+        if (res.success) {
+            showStatus('success', 'Confirmed', 'Dance added to your history.');
+        } else if (res.currentStatus === 'Cancelled') {
+            showStatus('error', 'Not possible', 'This dance was cancelled by your partner.');
+        } else if (res.currentStatus === 'Confirmed') {
+            showStatus('info', 'Already confirmed', 'This dance was already confirmed.');
+        } else {
+            showStatus('error', 'Not possible', 'This dance is no longer pending.');
+        }
+        setTimeout(() => loadDancerView(true), 2500);
     } catch (e) {
         console.error("Confirm failed:", e);
         showStatus('error', 'Error', 'Could not confirm.');
@@ -217,9 +223,17 @@ window.cancelDance = async function (rowId) {
     if (confirmed) {
         showStatus('loading', 'Deleting...', 'Please wait.');
         try {
-            await db.updateDanceStatus(rowId, 'Cancelled');
-            showStatus('success', 'Deleted', 'Log removed.');
-            loadDancerView();
+            const res = await db.cancelDance(rowId);
+            if (res.success) {
+                showStatus('success', 'Deleted', 'Log removed.');
+            } else if (res.currentStatus === 'Confirmed') {
+                showStatus('error', 'Too late', 'Your partner already confirmed this dance.');
+            } else if (res.currentStatus === 'Cancelled') {
+                showStatus('info', 'Already deleted', 'This dance was already removed.');
+            } else {
+                showStatus('error', 'Not possible', 'This dance is no longer pending.');
+            }
+            setTimeout(() => loadDancerView(true), 2500);
         } catch (e) {
             console.error("Cancel failed:", e);
             showStatus('error', 'Error', 'Failed to delete.');
@@ -439,18 +453,19 @@ window.unlinkChip = function () {
     });
 };
 
-window.toggleHistory = function (forceHide = false) {
+function applyHistoryVisibility(visible) {
     const content = document.getElementById('history-content');
     const btn = document.getElementById('toggle-history-btn');
     if (!content || !btn) return;
-    const isHidden = content.classList.contains('hidden');
-    if (forceHide === true || !isHidden) {
-        content.classList.add('hidden');
-        btn.innerText = "Show";
-    } else {
-        content.classList.remove('hidden');
-        btn.innerText = "Hide";
-    }
+    content.classList.toggle('hidden', !visible);
+    btn.innerText = visible ? 'Hide' : 'Show';
+}
+
+window.toggleHistory = function () {
+    const content = document.getElementById('history-content');
+    const nowVisible = content.classList.contains('hidden');
+    applyHistoryVisibility(nowVisible);
+    localStorage.setItem('historyVisible', nowVisible ? '1' : '0');
 };
 
 window.filterHistory = function (type) {
@@ -646,7 +661,6 @@ window.hideFeedback = function () {
 };
 
 window.redoFeedback = function () {
-    localStorage.removeItem('frozenStats');
     currentFeedbackTemplate = [];
     window.showFeedbackForm(true); // pre-fill with previous answers
 };
@@ -676,7 +690,8 @@ document.getElementById('feedbackForm').onsubmit = async (e) => {
     try {
         await db.submitFeedback(user.chip_id, feedbackData);
 
-        // Freeze stats snapshot then unlock
+        // Refresh history and freeze stats snapshot at submit time
+        fullHistoryData = await db.getHistory(user.chip_id);
         const snapshot = calculateStats(fullHistoryData);
         localStorage.setItem('frozenStats', JSON.stringify(snapshot));
         localStorage.setItem('lastFeedback', JSON.stringify({ submitted: true }));
@@ -742,16 +757,34 @@ function calculateStats(data) {
 }
 
 function updateStatsUI(stats) {
-    document.getElementById('stat-total').innerText = stats.total;
-    document.getElementById('stat-peak').innerText = stats.peak;
-    document.getElementById('stat-unique').innerText = stats.unique;
-    document.getElementById('stat-favorite').innerText = stats.favorite;
+    const grid = document.querySelector('.stat-grid');
+    const empty = document.getElementById('stats-empty');
+
+    if (stats.total === 0) {
+        if (grid) grid.classList.add('hidden');
+        if (empty) empty.classList.remove('hidden');
+    } else {
+        if (grid) grid.classList.remove('hidden');
+        if (empty) empty.classList.add('hidden');
+        document.getElementById('stat-total').innerText = stats.total;
+        document.getElementById('stat-peak').innerText = stats.peak;
+        document.getElementById('stat-unique').innerText = stats.unique;
+        document.getElementById('stat-favorite').innerText = stats.favorite;
+    }
 }
 
 function calculateAndDisplayStats() {
     const updateBtn = document.getElementById('update-stats-container');
+    const lastFeedback = localStorage.getItem('lastFeedback');
 
-    const frozen = localStorage.getItem('frozenStats');
+    let frozen = localStorage.getItem('frozenStats');
+
+    // Imported-feedback users may lack a snapshot — create one now
+    if (!frozen && lastFeedback) {
+        frozen = JSON.stringify(calculateStats(fullHistoryData));
+        localStorage.setItem('frozenStats', frozen);
+    }
+
     if (frozen) {
         updateStatsUI(JSON.parse(frozen));
         if (updateBtn) {
@@ -762,6 +795,7 @@ function calculateAndDisplayStats() {
         return;
     }
 
+    // No feedback submitted yet — show live stats
     const stats = calculateStats(fullHistoryData);
     updateStatsUI(stats);
     if (updateBtn) {

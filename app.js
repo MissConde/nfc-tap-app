@@ -94,10 +94,8 @@ async function loadDancerView(silent = false) {
             document.getElementById('stats-content').classList.remove('hidden');
             calculateAndDisplayStats();
 
-            if (!window._historyInitialized) {
-                toggleHistory(true);
-                window._historyInitialized = true;
-            }
+            const histPref = localStorage.getItem('historyVisible');
+            applyHistoryVisibility(histPref === '1');
             document.getElementById('toggle-history-btn').classList.remove('hidden');
         }
     } catch (e) {
@@ -455,18 +453,19 @@ window.unlinkChip = function () {
     });
 };
 
-window.toggleHistory = function (forceHide = false) {
+function applyHistoryVisibility(visible) {
     const content = document.getElementById('history-content');
     const btn = document.getElementById('toggle-history-btn');
     if (!content || !btn) return;
-    const isHidden = content.classList.contains('hidden');
-    if (forceHide === true || !isHidden) {
-        content.classList.add('hidden');
-        btn.innerText = "Show";
-    } else {
-        content.classList.remove('hidden');
-        btn.innerText = "Hide";
-    }
+    content.classList.toggle('hidden', !visible);
+    btn.innerText = visible ? 'Hide' : 'Show';
+}
+
+window.toggleHistory = function () {
+    const content = document.getElementById('history-content');
+    const nowVisible = content.classList.contains('hidden');
+    applyHistoryVisibility(nowVisible);
+    localStorage.setItem('historyVisible', nowVisible ? '1' : '0');
 };
 
 window.filterHistory = function (type) {

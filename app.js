@@ -662,7 +662,6 @@ window.hideFeedback = function () {
 };
 
 window.redoFeedback = function () {
-    localStorage.removeItem('frozenStats');
     currentFeedbackTemplate = [];
     window.showFeedbackForm(true); // pre-fill with previous answers
 };
@@ -692,7 +691,8 @@ document.getElementById('feedbackForm').onsubmit = async (e) => {
     try {
         await db.submitFeedback(user.chip_id, feedbackData);
 
-        // Freeze stats snapshot then unlock
+        // Refresh history and freeze stats snapshot at submit time
+        fullHistoryData = await db.getHistory(user.chip_id);
         const snapshot = calculateStats(fullHistoryData);
         localStorage.setItem('frozenStats', JSON.stringify(snapshot));
         localStorage.setItem('lastFeedback', JSON.stringify({ submitted: true }));
@@ -766,8 +766,16 @@ function updateStatsUI(stats) {
 
 function calculateAndDisplayStats() {
     const updateBtn = document.getElementById('update-stats-container');
+    const lastFeedback = localStorage.getItem('lastFeedback');
 
-    const frozen = localStorage.getItem('frozenStats');
+    let frozen = localStorage.getItem('frozenStats');
+
+    // Imported-feedback users may lack a snapshot — create one now
+    if (!frozen && lastFeedback) {
+        frozen = JSON.stringify(calculateStats(fullHistoryData));
+        localStorage.setItem('frozenStats', frozen);
+    }
+
     if (frozen) {
         updateStatsUI(JSON.parse(frozen));
         if (updateBtn) {
@@ -778,6 +786,7 @@ function calculateAndDisplayStats() {
         return;
     }
 
+    // No feedback submitted yet — show live stats
     const stats = calculateStats(fullHistoryData);
     updateStatsUI(stats);
     if (updateBtn) {

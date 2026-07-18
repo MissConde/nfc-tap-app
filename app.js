@@ -180,6 +180,20 @@ async function handleAutoLogWithAutoClose(myID, partnerID) {
                 <button class="primary-btn" onclick="window.close()" style="margin-top:20px;">Close Tab</button>`;
             if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
             setTimeout(() => window.close(), 2500);
+        } else if (result.status === "AlreadyLogged") {
+            document.getElementById('auto-close-view').innerHTML = `
+                <div style="font-size:4rem; margin-bottom:10px;">✅</div>
+                <h2 style="color:var(--text-primary);">Already logged</h2>
+                <p style="color:var(--text-secondary); margin-top:10px;">Your dance with ${alias} is already confirmed.</p>
+                <button class="primary-btn" onclick="window.close()" style="margin-top:20px;">Close Tab</button>`;
+            setTimeout(() => window.close(), 4000);
+        } else if (result.status === "Duplicate") {
+            document.getElementById('auto-close-view').innerHTML = `
+                <div style="font-size:4rem; margin-bottom:10px;">⏳</div>
+                <h2 style="color:var(--text-primary);">Already logged</h2>
+                <p style="color:var(--text-secondary); margin-top:10px;">Still waiting for ${alias} to scan back (${result.minutesLeft} min left).</p>
+                <button class="primary-btn" onclick="window.close()" style="margin-top:20px;">Close Tab</button>`;
+            setTimeout(() => window.close(), 4000);
         } else {
             document.getElementById('auto-close-view').innerHTML = `
                 <div style="font-size:4rem; margin-bottom:10px;">✨</div>
@@ -404,7 +418,7 @@ function renderHistoryTable(data) {
         if (isConfirmed) {
             statusHtml = `<span class="status-pill status-confirmed">Confirmed</span>`;
         } else if (row.isTarget) {
-            statusHtml = `<button class="status-pill" onclick="confirmDanceManually('${row.rowId}')">Confirm?</button>`;
+            statusHtml = `<button class="status-pill" onclick="confirmDanceManually('${row.rowId}')">Confirm</button>`;
         } else {
             statusHtml = `
                 <div style="display: flex; align-items: center; gap: 8px; justify-content: flex-end;">

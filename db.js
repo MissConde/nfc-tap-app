@@ -98,43 +98,62 @@ export async function logDance(scanner_id, target_id) {
     const partnerAlias = targetData.alias;
     const confession = targetData.confession || "";
 
-    // 2. Fetch recent PENDING interactions between these two users (last 10 mins)
+    // 2. Fetch recent Pending OR Confirmed interactions between these two (last 10 mins)
     const { data: recentLogs, error: logsErr } = await supabase
         .from('interactions')
         .select('*')
         .gte('timestamp', tenMinsAgo)
         .or(`and(scanner_id.eq.${scanner_id},target_id.eq.${target_id}),and(scanner_id.eq.${target_id},target_id.eq.${scanner_id})`)
-        .eq('status', 'Pending');
+        .in('status', ['Pending', 'Confirmed'])
+        .order('timestamp', { ascending: false });
 
     if (logsErr) throw logsErr;
 
     if (recentLogs && recentLogs.length > 0) {
-        const log = recentLogs[0];
+        const log = recentLogs[0]; // most recent interaction between this pair
 
-        // The Handshake: Target scanned me recently, so confirm it.
-        if (log.scanner_id === target_id) {
-            const { error } = await supabase
-                .from('interactions')
-                .update({ status: 'Confirmed' })
-                .eq('id', log.id);
-            if (error) throw error;
-            return { success: true, status: "Confirmed", partnerAlias, confession };
-        }
+        // Before treating as duplicate, check if either person has danced with
+        // someone else AFTER this interaction (meaning they genuinely want a new dance).
+        const { data: intervening } = await supabase
+            .from('interactions')
+            .select('id')
+            .gt('timestamp', log.timestamp)
+            .in('status', ['Pending', 'Confirmed'])
+            .or(
+                `and(scanner_id.eq.${scanner_id},target_id.neq.${target_id}),` +
+                `and(target_id.eq.${scanner_id},scanner_id.neq.${target_id}),` +
+                `and(scanner_id.eq.${target_id},target_id.neq.${scanner_id}),` +
+                `and(target_id.eq.${target_id},scanner_id.neq.${scanner_id})`
+            )
+            .limit(1);
 
-        // The Duplicate: I already scanned them, refresh the timestamp (reset cooldown).
-        if (log.scanner_id === scanner_id) {
-            const { error } = await supabase
-                .from('interactions')
-                .update({ timestamp: now.toISOString() })
-                .eq('id', log.id);
-            if (error) throw error;
-            return { success: true, status: "Pending", message: "Duplicate", partnerAlias, confession };
+        const hasInterveningDance = intervening && intervening.length > 0;
+
+        if (!hasInterveningDance) {
+            // Handshake: the other person scanned me → confirm
+            if (log.status === 'Pending' && log.scanner_id === target_id) {
+                const { error } = await supabase
+                    .from('interactions')
+                    .update({ status: 'Confirmed' })
+                    .eq('id', log.id);
+                if (error) throw error;
+                return { success: true, status: "Confirmed", partnerAlias, confession };
+            }
+
+            // Already confirmed within the window
+            if (log.status === 'Confirmed') {
+                return { success: false, status: "AlreadyLogged", partnerAlias };
+            }
+
+            // Duplicate: I already scanned them and it's still Pending — don't update timestamp
+            if (log.status === 'Pending' && log.scanner_id === scanner_id) {
+                const minutesLeft = Math.ceil(10 - (now - new Date(log.timestamp)) / 60000);
+                return { success: false, status: "Duplicate", partnerAlias, minutesLeft };
+            }
         }
     }
 
     // 3. New Dance Log
-    // NOTE: this INSERT is the call that fails with "permission denied for
-    // sequence interactions_id_seq" if sequence grants are missing.
     const { error: insertErr } = await supabase.from('interactions').insert([{
         timestamp: now.toISOString(),
         scanner_id,

@@ -59,6 +59,24 @@ export async function registerUser(userData) {
     return true;
 }
 
+export async function checkAliasAvailable(alias) {
+    const { count, error } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .ilike('alias', alias);
+    if (error) throw error;
+    return count === 0;
+}
+
+export async function checkEmailAvailable(email) {
+    const { count, error } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .ilike('email', email);
+    if (error) throw error;
+    return count === 0;
+}
+
 export async function getConfession(chip_id) {
     const { data, error } = await supabase
         .from('users')

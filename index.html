@@ -8,8 +8,6 @@
     <link rel="stylesheet" href="style.css">
 
     <script type="module" src="app.js"></script>
-
-    <link rel="apple-touch-icon" href="assets/kwanza_icon_192.png">
 </head>
 
 <body>
@@ -39,15 +37,15 @@
             <h2>Dancer Profile</h2>
             <form id="regForm" novalidate>
                 <div class="input-group">
-                    <input type="text" id="fullName" placeholder="Full Name" required pattern=".*\s.*"
+                    <input type="text" id="fullName" placeholder="Full Name" required pattern="\S+\s+\S+.*"
                         title="Please enter first and last name">
                     <span class="error-msg">Please enter First and Last name</span>
                 </div>
 
                 <div class="input-group">
                     <input type="text" id="alias" placeholder="Public Alias (Salsera10)" required pattern="^\S+$"
-                        title="No spaces allowed">
-                    <span class="error-msg" id="alias-error">Alias cannot contain spaces or is already taken</span>
+                        maxlength="9" title="No spaces allowed, max 9 characters">
+                    <span class="error-msg" id="alias-error">Alias cannot contain spaces, max 9 chars, or is already taken</span>
                 </div>
 
                 <div class="input-group">
@@ -216,7 +214,9 @@
                 </div>
 
                 <div class="input-group">
-                    <input type="text" id="igUser" placeholder="Instagram User (Optional)">
+                    <input type="text" id="igUser" placeholder="Instagram User (i.e @dancerSocial)"
+                        pattern="^@?[a-zA-Z0-9._]{1,30}$" title="Letters, numbers, dots and underscores only">
+                    <span class="error-msg" id="ig-error">Invalid Instagram handle</span>
                 </div>
 
                 <p style="margin-bottom: 8px; font-weight: bold; color: var(--text-secondary);">Your Role:</p>
@@ -232,9 +232,10 @@
                 <div class="input-group"
                     style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border-color);">
                     <p style="margin-bottom: 8px; font-weight: bold; color: var(--text-primary);">Break the ice 🧊</p>
-                    <textarea id="confession" rows="2"
+                    <textarea id="confession" rows="2" maxlength="120"
                         style="width:100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-family: inherit; resize: none;"
                         placeholder="Dance confession (e.g., I secretly close my eyes during UrbanKiz...)"></textarea>
+                    <small id="confession-counter" style="display:block; text-align:right; color:#999; font-size:0.7rem; margin-top:2px;">0 / 120</small>
                 </div>
 
                 <p class="legal-text">By continuing, you agree to share your data with organizers.</p>
@@ -246,7 +247,7 @@
         <div id="dancer-view" class="hidden">
             <!-- Festival Banner -->
             <div style="margin-bottom: 15px;">
-                <img src="assets/kwanza_banner.jpeg" alt="Festival Banner" loading="lazy"
+                <img src="assets/practice_banner.png" alt="Festival Banner" loading="lazy"
                     style="width: 100%; height: auto; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: block;">
             </div>
 

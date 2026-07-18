@@ -293,7 +293,7 @@ async function checkUserInSystem(id) {
 document.getElementById('regForm').onsubmit = async (e) => {
     e.preventDefault();
     const roleValue = document.getElementById('role').value;
-    if (!e.target.checkValidity() || !roleValue) return;
+    if (!e.target.checkValidity() || !roleValue || !aliasAvailable || !emailAvailable) return;
 
     const user_key = Math.random().toString(36).substring(2, 8).toUpperCase();
     const chip_id = idFromURL || localStorage.getItem('pending_chip_id');
@@ -445,14 +445,108 @@ window.selectRole = function (roleValue) {
     document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('active'));
     const btn = document.getElementById('btn-' + roleValue.toLowerCase());
     if (btn) btn.classList.add('active');
+    document.getElementById('role-error').style.display = 'none';
     validateFormState();
 };
+
+// --- Registration form validation ---
+
+// Track async uniqueness results
+let aliasAvailable = true;
+let emailAvailable = true;
+let aliasCheckTimer = null;
+let emailCheckTimer = null;
+
+// Wire up all form inputs to trigger validation on every keystroke/change
+(function initRegFormListeners() {
+    const fields = ['fullName', 'alias', 'email', 'igUser', 'country', 'confession'];
+    fields.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const event = (el.tagName === 'SELECT') ? 'change' : 'input';
+        el.addEventListener(event, () => validateFormState());
+    });
+
+    // Alias: debounced uniqueness check
+    const aliasEl = document.getElementById('alias');
+    if (aliasEl) {
+        aliasEl.addEventListener('input', () => {
+            clearTimeout(aliasCheckTimer);
+            const val = aliasEl.value.trim();
+            if (!val || val.length > 9 || /\s/.test(val)) {
+                aliasAvailable = true; // pattern will catch it
+                return;
+            }
+            aliasCheckTimer = setTimeout(async () => {
+                try {
+                    aliasAvailable = await db.checkAliasAvailable(val);
+                    const err = document.getElementById('alias-error');
+                    if (!aliasAvailable) {
+                        aliasEl.classList.add('is-invalid');
+                        err.textContent = 'This alias is already taken';
+                        err.style.display = 'block';
+                    } else {
+                        aliasEl.classList.remove('is-invalid');
+                        err.style.display = 'none';
+                    }
+                } catch (e) {
+                    console.warn('Alias check failed', e);
+                    aliasAvailable = true; // don't block on network error
+                }
+                validateFormState();
+            }, 400);
+        });
+    }
+
+    // Email: debounced uniqueness check
+    const emailEl = document.getElementById('email');
+    if (emailEl) {
+        emailEl.addEventListener('input', () => {
+            clearTimeout(emailCheckTimer);
+            const val = emailEl.value.trim();
+            if (!val || !emailEl.validity.valid) {
+                emailAvailable = true; // pattern will catch it
+                return;
+            }
+            emailCheckTimer = setTimeout(async () => {
+                try {
+                    emailAvailable = await db.checkEmailAvailable(val);
+                    const err = document.getElementById('email-error');
+                    if (!emailAvailable) {
+                        emailEl.classList.add('is-invalid');
+                        err.textContent = 'This email is already registered';
+                        err.style.display = 'block';
+                    } else {
+                        emailEl.classList.remove('is-invalid');
+                        err.style.display = 'none';
+                    }
+                } catch (e) {
+                    console.warn('Email check failed', e);
+                    emailAvailable = true;
+                }
+                validateFormState();
+            }, 400);
+        });
+    }
+
+    // Confession character counter
+    const confEl = document.getElementById('confession');
+    if (confEl) {
+        confEl.addEventListener('input', () => {
+            const counter = document.getElementById('confession-counter');
+            if (counter) counter.textContent = `${confEl.value.length} / 120`;
+        });
+    }
+})();
 
 function validateFormState() {
     const form = document.getElementById('regForm');
     const submitBtn = document.getElementById('submitBtn');
     if (!form || !submitBtn) return;
-    const isFormValid = form.checkValidity() && document.getElementById('role').value !== "";
+
+    const roleSelected = document.getElementById('role').value !== '';
+    const isFormValid = form.checkValidity() && roleSelected && aliasAvailable && emailAvailable;
+
     submitBtn.disabled = !isFormValid;
     isFormValid ? submitBtn.classList.remove('btn-locked') : submitBtn.classList.add('btn-locked');
 }

@@ -186,14 +186,14 @@ async function handleAutoLogWithAutoClose(myID, partnerID) {
                 <h2 style="color:var(--text-primary);">Already logged</h2>
                 <p style="color:var(--text-secondary); margin-top:10px;">Your dance with ${alias} is already confirmed.</p>
                 <button class="primary-btn" onclick="window.close()" style="margin-top:20px;">Close Tab</button>`;
-            setTimeout(() => window.close(), 4000);
+            setTimeout(() => window.close(), 2500);
         } else if (result.status === "Duplicate") {
             document.getElementById('auto-close-view').innerHTML = `
                 <div style="font-size:4rem; margin-bottom:10px;">⏳</div>
                 <h2 style="color:var(--text-primary);">Already logged</h2>
                 <p style="color:var(--text-secondary); margin-top:10px;">Still waiting for ${alias} to scan back (${result.minutesLeft} min left).</p>
                 <button class="primary-btn" onclick="window.close()" style="margin-top:20px;">Close Tab</button>`;
-            setTimeout(() => window.close(), 4000);
+            setTimeout(() => window.close(), 2500);
         } else {
             document.getElementById('auto-close-view').innerHTML = `
                 <div style="font-size:4rem; margin-bottom:10px;">✨</div>

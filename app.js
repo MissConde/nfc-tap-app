@@ -114,6 +114,8 @@ async function loadConfessionEditor(chip_id) {
         const current = await db.getConfession(chip_id);
         box.value = current;
         box.dataset.loaded = "1";
+        const counter = document.getElementById('confession-edit-counter');
+        if (counter) counter.textContent = `${current.length} / 120`;
     } catch (e) {
         console.warn("Could not load confession:", e);
     }
@@ -137,6 +139,30 @@ window.saveConfession = async function () {
         if (btn) { btn.disabled = false; btn.innerText = 'Save Ice-Breaker'; }
     }
 };
+
+// Shared collapsible section toggle
+function toggleSection(bodyId, iconId) {
+    const body = document.getElementById(bodyId);
+    const icon = document.getElementById(iconId);
+    if (!body) return false;
+    const isHidden = body.classList.toggle('hidden');
+    if (icon) icon.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(90deg)';
+    return !isHidden; // returns true if now visible
+}
+
+window.toggleConfessionEditor = function () {
+    toggleSection('confession-body', 'confession-toggle-icon');
+};
+
+// Character counter for profile ice-breaker textarea
+(function initConfessionEditCounter() {
+    const box = document.getElementById('confession-edit');
+    if (!box) return;
+    box.addEventListener('input', () => {
+        const counter = document.getElementById('confession-edit-counter');
+        if (counter) counter.textContent = `${box.value.length} / 120`;
+    });
+})();
 
 function renderUserProfile(user) {
     document.getElementById('displayName').innerText = user.alias;
@@ -563,16 +589,14 @@ window.unlinkChip = function () {
 
 function applyHistoryVisibility(visible) {
     const content = document.getElementById('history-content');
-    const btn = document.getElementById('toggle-history-btn');
-    if (!content || !btn) return;
+    const icon = document.getElementById('history-toggle-icon');
+    if (!content) return;
     content.classList.toggle('hidden', !visible);
-    btn.innerText = visible ? 'Hide' : 'Show';
+    if (icon) icon.style.transform = visible ? 'rotate(90deg)' : 'rotate(0deg)';
 }
 
 window.toggleHistory = function () {
-    const content = document.getElementById('history-content');
-    const nowVisible = content.classList.contains('hidden');
-    applyHistoryVisibility(nowVisible);
+    const nowVisible = toggleSection('history-content', 'history-toggle-icon');
     localStorage.setItem('historyVisible', nowVisible ? '1' : '0');
 };
 

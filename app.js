@@ -114,6 +114,8 @@ async function loadConfessionEditor(chip_id) {
         const current = await db.getConfession(chip_id);
         box.value = current;
         box.dataset.loaded = "1";
+        const counter = document.getElementById('confession-edit-counter');
+        if (counter) counter.textContent = `${current.length} / 120`;
     } catch (e) {
         console.warn("Could not load confession:", e);
     }
@@ -137,6 +139,24 @@ window.saveConfession = async function () {
         if (btn) { btn.disabled = false; btn.innerText = 'Save Ice-Breaker'; }
     }
 };
+
+window.toggleConfessionEditor = function () {
+    const body = document.getElementById('confession-body');
+    const icon = document.getElementById('confession-toggle-icon');
+    if (!body) return;
+    const isHidden = body.classList.toggle('hidden');
+    if (icon) icon.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(90deg)';
+};
+
+// Character counter for profile ice-breaker textarea
+(function initConfessionEditCounter() {
+    const box = document.getElementById('confession-edit');
+    if (!box) return;
+    box.addEventListener('input', () => {
+        const counter = document.getElementById('confession-edit-counter');
+        if (counter) counter.textContent = `${box.value.length} / 120`;
+    });
+})();
 
 function renderUserProfile(user) {
     document.getElementById('displayName').innerText = user.alias;

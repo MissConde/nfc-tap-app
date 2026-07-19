@@ -339,19 +339,25 @@
                 </div>
             </div>
 
-            <!-- NEW: EDITABLE ICE-BREAKER / CONFESSION -->
+            <!-- NEW: EDITABLE ICE-BREAKER / CONFESSION (collapsible) -->
             <div class="card" id="confession-card">
-                <h3 style="margin-bottom: 5px;">🧊 My Ice-Breaker</h3>
-                <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0 0 10px 0;">
-                    Shown to your partner when you match. Keep it fun!
-                </p>
-                <textarea id="confession-edit" rows="2" maxlength="140"
-                    style="width:100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-family: inherit; resize: none;"
-                    placeholder="e.g., I secretly close my eyes during UrbanKiz..."></textarea>
-                <button class="secondary-btn" id="save-confession-btn" onclick="saveConfession()"
-                    style="font-size: 0.75rem; padding: 10px; height: auto;">
-                    Save Ice-Breaker
-                </button>
+                <div id="confession-header" onclick="toggleConfessionEditor()" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                    <h3 style="margin:0;">🧊 My Ice-Breaker</h3>
+                    <span id="confession-toggle-icon" style="font-size:1.2rem; color:var(--text-secondary); transition:transform 0.2s;">▸</span>
+                </div>
+                <div id="confession-body" class="hidden" style="margin-top:10px;">
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0 0 10px 0;">
+                        Shown to your partner when you match. Keep it fun!
+                    </p>
+                    <textarea id="confession-edit" rows="2" maxlength="120"
+                        style="width:100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-family: inherit; resize: none;"
+                        placeholder="e.g., I secretly close my eyes during UrbanKiz..."></textarea>
+                    <small id="confession-edit-counter" style="display:block; text-align:right; color:#999; font-size:0.7rem; margin-top:2px;">0 / 120</small>
+                    <button class="secondary-btn" id="save-confession-btn" onclick="saveConfession()"
+                        style="font-size: 0.75rem; padding: 10px; height: auto;">
+                        Save Ice-Breaker
+                    </button>
+                </div>
             </div>
 
             <div id="unlink-section" class="card"

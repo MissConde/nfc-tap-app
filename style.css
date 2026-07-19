@@ -154,6 +154,23 @@ select {
     transform-origin: top center;
 }
 
+/* --- COLLAPSIBLE SECTION TOGGLES --- */
+.section-toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.toggle-chevron {
+    font-size: 1.3rem;
+    color: var(--secondary);
+    transition: transform 0.2s ease;
+    line-height: 1;
+    padding: 4px;
+}
+
 .input-group {
     margin-bottom: 15px;
     position: relative;

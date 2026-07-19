@@ -140,12 +140,18 @@ window.saveConfession = async function () {
     }
 };
 
-window.toggleConfessionEditor = function () {
-    const body = document.getElementById('confession-body');
-    const icon = document.getElementById('confession-toggle-icon');
-    if (!body) return;
+// Shared collapsible section toggle
+function toggleSection(bodyId, iconId) {
+    const body = document.getElementById(bodyId);
+    const icon = document.getElementById(iconId);
+    if (!body) return false;
     const isHidden = body.classList.toggle('hidden');
     if (icon) icon.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(90deg)';
+    return !isHidden; // returns true if now visible
+}
+
+window.toggleConfessionEditor = function () {
+    toggleSection('confession-body', 'confession-toggle-icon');
 };
 
 // Character counter for profile ice-breaker textarea
@@ -583,16 +589,14 @@ window.unlinkChip = function () {
 
 function applyHistoryVisibility(visible) {
     const content = document.getElementById('history-content');
-    const btn = document.getElementById('toggle-history-btn');
-    if (!content || !btn) return;
+    const icon = document.getElementById('history-toggle-icon');
+    if (!content) return;
     content.classList.toggle('hidden', !visible);
-    btn.innerText = visible ? 'Hide' : 'Show';
+    if (icon) icon.style.transform = visible ? 'rotate(90deg)' : 'rotate(0deg)';
 }
 
 window.toggleHistory = function () {
-    const content = document.getElementById('history-content');
-    const nowVisible = content.classList.contains('hidden');
-    applyHistoryVisibility(nowVisible);
+    const nowVisible = toggleSection('history-content', 'history-toggle-icon');
     localStorage.setItem('historyVisible', nowVisible ? '1' : '0');
 };
 

@@ -45,7 +45,8 @@
                 <div class="input-group">
                     <input type="text" id="alias" placeholder="Public Alias (Salsera10)" required pattern="^\S+$"
                         maxlength="9" title="No spaces allowed, max 9 characters">
-                    <span class="error-msg" id="alias-error">Alias cannot contain spaces, max 9 chars, or is already taken</span>
+                    <span class="error-msg" id="alias-error">Alias cannot contain spaces, max 9 chars, or is already
+                        taken</span>
                 </div>
 
                 <div class="input-group">
@@ -57,8 +58,11 @@
 
                 <div class="input-group">
                     <select id="country" required
-                        style="width:100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem; color: var(--text-primary); appearance: none; background: #fff url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%23666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="6 9 12 15 18 9"></polyline></svg>') no-repeat right 10px center; background-size: 16px;">
+                        style="width:100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem; color: var(--text-primary); appearance: none; background: #fff url('data:image/svg+xml;utf8,<svg xmlns="
+                        http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="%23666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline></svg>') no-repeat right 10px center;
+                        background-size: 16px;">
                         <option value="" disabled selected>Select Your Country</option>
                         <option value="AF">Afghanistan</option>
                         <option value="AL">Albania</option>
@@ -235,7 +239,9 @@
                     <textarea id="confession" rows="2" maxlength="120"
                         style="width:100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-family: inherit; resize: none;"
                         placeholder="Dance confession (e.g., I secretly close my eyes during UrbanKiz...)"></textarea>
-                    <small id="confession-counter" style="display:block; text-align:right; color:#999; font-size:0.7rem; margin-top:2px;">0 / 120</small>
+                    <small id="confession-counter"
+                        style="display:block; text-align:right; color:#999; font-size:0.7rem; margin-top:2px;">0 /
+                        120</small>
                 </div>
 
                 <p class="legal-text">By continuing, you agree to share your data with organizers.</p>
@@ -261,10 +267,9 @@
             </div>
 
             <div class="card" id="history-card">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <div class="section-toggle hidden" id="toggle-history-btn" onclick="toggleHistory()">
                     <h3 style="margin:0;">My Dance History</h3>
-                    <button class="secondary-btn btn-sm hidden" id="toggle-history-btn"
-                        onclick="toggleHistory()">Hide</button>
+                    <span class="toggle-chevron" id="history-toggle-icon">▸</span>
                 </div>
 
                 <div id="history-content">
@@ -322,8 +327,8 @@
 
                     <div id="stats-empty" class="hidden" style="text-align: center; padding: 20px 10px;">
                         <div style="font-size: 3rem; margin-bottom: 10px;">💃🕺</div>
-                        <p style="font-size: 1.2rem; font-weight: 600; color: var(--text-primary); margin: 0;">Don't be shy — start dancing!</p>
-                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 8px;">Your stats will light up after your first dance.</p>
+                        <p style="font-size: 1.2rem; font-weight: 600; color: var(--text-primary); margin: 0;">Don't be
+                            shy — start dancing!</p>
                     </div>
 
                     <!-- UPDATE STATS SECTION -->
@@ -341,9 +346,9 @@
 
             <!-- NEW: EDITABLE ICE-BREAKER / CONFESSION (collapsible) -->
             <div class="card" id="confession-card">
-                <div id="confession-header" onclick="toggleConfessionEditor()" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                <div class="section-toggle" onclick="toggleConfessionEditor()">
                     <h3 style="margin:0;">🧊 My Ice-Breaker</h3>
-                    <span id="confession-toggle-icon" style="font-size:1.2rem; color:var(--text-secondary); transition:transform 0.2s;">▸</span>
+                    <span class="toggle-chevron" id="confession-toggle-icon">▸</span>
                 </div>
                 <div id="confession-body" class="hidden" style="margin-top:10px;">
                     <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0 0 10px 0;">
@@ -352,7 +357,9 @@
                     <textarea id="confession-edit" rows="2" maxlength="120"
                         style="width:100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-family: inherit; resize: none;"
                         placeholder="e.g., I secretly close my eyes during UrbanKiz..."></textarea>
-                    <small id="confession-edit-counter" style="display:block; text-align:right; color:#999; font-size:0.7rem; margin-top:2px;">0 / 120</small>
+                    <small id="confession-edit-counter"
+                        style="display:block; text-align:right; color:#999; font-size:0.7rem; margin-top:2px;">0 /
+                        120</small>
                     <button class="secondary-btn" id="save-confession-btn" onclick="saveConfession()"
                         style="font-size: 0.75rem; padding: 10px; height: auto;">
                         Save Ice-Breaker

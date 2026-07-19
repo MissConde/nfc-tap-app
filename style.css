@@ -171,6 +171,10 @@ select {
     padding: 4px;
 }
 
+.section-toggle + *:not(.hidden) {
+    margin-top: 10px;
+}
+
 .input-group {
     margin-bottom: 15px;
     position: relative;
